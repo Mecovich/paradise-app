@@ -10,6 +10,8 @@
 <link href="https://fonts.cdnfonts.com/css/tt-commons" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
 :root{
@@ -137,6 +139,40 @@ input.mini:focus{border-color:var(--gold-dim);}
 <script type="text/babel">
 const {useState} = React;
 const uid=()=>Math.random().toString(36).slice(2,9);
+
+/* ================= Общий store (Firebase ↔ локальный fallback) ================= */
+/* Вставь конфиг из Firebase (Project settings → SDK setup → Config). До этого — локальные демо-данные. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBAVQaGGRuVgmUT_r-o2g0HzgzdHYPgWQ0",
+  authDomain: "paradise-c6c00.firebaseapp.com",
+  databaseURL: "https://paradise-c6c00-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "paradise-c6c00",
+  appId: "1:1050905668185:web:bcf3109d4fa2c9a9311f48"
+};
+const FB_ON = FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.databaseURL.indexOf("PASTE_HERE")<0 && window.firebase;
+let _db=null;
+if(FB_ON){ try{ firebase.initializeApp(FIREBASE_CONFIG); _db=firebase.database(); }catch(e){ console.warn("Firebase:",e); } }
+const _local={tournaments:{},players:{},subs:{tournaments:[],players:[]}};
+const _arr=(c)=>Object.entries(_local[c]).map(([id,v])=>({id,...v}));
+const _emit=(c)=>_local.subs[c].forEach(cb=>cb(_arr(c)));
+const _clean=(o)=>JSON.parse(JSON.stringify(o));
+const store={
+  on(c,cb){
+    if(FB_ON){ _db.ref(c).on("value",s=>{const v=s.val()||{};cb(Object.entries(v).map(([id,x])=>({id,...x})));}); }
+    else { _local.subs[c].push(cb); cb(_arr(c)); }
+  },
+  save(c,item){
+    const id=item.id||(FB_ON?_db.ref(c).push().key:uid());
+    const data=_clean({...item,id});
+    if(FB_ON) _db.ref(c+"/"+id).set(data); else { _local[c][id]=data; _emit(c); }
+    return id;
+  },
+  del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove(); else { delete _local[c][id]; _emit(c); } },
+  seed(c,items){
+    if(FB_ON){ _db.ref(c).once("value",s=>{ if(!s.exists()){ const m={}; items.forEach(it=>{const id=it.id||_db.ref(c).push().key; m[id]=_clean({...it,id});}); _db.ref(c).set(m);} }); }
+    else if(!Object.keys(_local[c]).length){ items.forEach(it=>{const id=it.id||uid(); _local[c][id]=_clean({...it,id});}); _emit(c); }
+  }
+};
 const Logo=({size=22,color="#fff"})=>(
   <svg width={size} height={Math.round(size*658/653)} viewBox="0 0 653 658" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:"block"}}>
     <path d="M345.512 548.155C354.895 548.155 363.063 554.34 366.474 563.068C379.356 596.032 399.299 620.916 420.044 635.225C423.577 637.662 425.87 641.584 425.87 645.871C425.87 652.57 420.431 658 413.722 658H242.828C236.119 658 230.68 652.57 230.68 645.871C230.68 641.584 232.973 637.662 236.505 635.225C257.25 620.916 277.193 596.032 290.075 563.068C293.486 554.34 301.654 548.155 311.038 548.155H345.512ZM184.96 162.315C190.597 157.086 198.596 155.107 205.876 157.595C223.146 163.498 238.339 170.354 249.221 178.194C257.7 184.305 251.226 193.532 240.858 192.454C177.318 185.85 79.7603 209.18 57.8225 344.726C57.5451 346.447 59.547 347.65 60.8446 346.498C91.9676 318.853 160.585 269.707 225.27 259.156C232.659 257.951 236.106 263.175 230.946 268.644C204.661 296.499 128.485 368.435 220.445 504.988C221.516 506.576 224.109 505.806 223.977 503.891C220.797 457.957 232.042 367.67 293.839 292.603C301.036 283.862 314.175 289.156 313.871 300.514C312.051 368.399 299.43 442.878 280.196 521.099C278.881 526.447 275.428 531.161 270.648 533.908C76.4196 645.537 -129.462 404.072 103.816 229.546C135.144 206.104 161.911 183.7 184.96 162.315ZM447.538 158.084C454.827 155.553 462.858 157.522 468.515 162.762C491.459 184.012 518.074 206.267 549.184 229.546C781.913 403.661 577.547 644.401 383.724 534.694C378.831 531.924 375.315 527.103 374.026 521.637C355.557 443.347 343.749 369.367 342.072 301.877C341.789 290.483 354.994 285.208 362.159 294.022C422.938 368.804 434.023 458.245 430.864 503.891C430.732 505.806 433.326 506.576 434.396 504.988C526.356 368.435 450.18 296.499 423.894 268.644C418.734 263.175 422.181 257.95 429.571 259.156C494.256 269.706 562.873 318.853 593.996 346.498C595.294 347.649 597.296 346.447 597.018 344.726C575.08 209.178 477.519 185.849 413.979 192.454C403.611 193.532 397.14 184.305 405.62 178.194C416.201 170.57 430.859 163.876 447.538 158.084ZM306.661 11.3844C315.297 -3.79824 337.693 -3.79352 346.325 11.3909C356.943 30.0671 369.527 50.0378 385.399 71.338C394.041 82.9373 389.624 99.9258 377.245 107.426C361.729 116.827 348.692 127.973 338.561 138.885C332.655 145.245 322.186 145.245 316.28 138.885C305.914 127.72 292.505 116.31 276.511 106.776C264.017 99.3281 259.481 82.2442 268.147 70.5727C283.752 49.5565 296.164 29.8385 306.661 11.3844Z" fill={color}/>
@@ -177,14 +213,11 @@ const fmtDate=d=>{const[y,m,dd]=d.split("-");const mm=["янв","фев","мар
 function Uname({p}){return <div className="uwrap"><span className="av">{UserIcon}</span><span>{p?p.username:"—"}</span></div>;}
 
 /* ---------- Tournaments ---------- */
-function Tournaments({tours,setTours,players}){
+function Tournaments({tours,saveTour,delTour,players}){
   const [edit,setEdit]=useState(null); // tournament obj or "new"
   const blank={id:null,name:"ТВОЙ ТУРНИР",date:"2026-08-01",time:"19:00",buyin:"1 500 ₽",stack:"20 000",max:60,status:"reg",regs:[],results:[]};
-  const save=(t)=>{
-    setTours(prev=> t.id ? prev.map(x=>x.id===t.id?t:x) : [{...t,id:uid()},...prev]);
-    setEdit(null);
-  };
-  const del=(id)=>setTours(prev=>prev.filter(x=>x.id!==id));
+  const save=(t)=>{ saveTour(t); setEdit(null); };
+  const del=(id)=>delTour(id);
   return (
     <div>
       <div className="head">
@@ -202,7 +235,7 @@ function Tournaments({tours,setTours,players}){
                 <td className="muted mono">{fmtDate(t.date)}</td>
                 <td className="mono">{t.time}</td>
                 <td className="gold-t">{t.buyin}</td>
-                <td className="mono">{t.regs.length} / {t.max}</td>
+                <td className="mono">{(t.regs||[]).length} / {t.max}</td>
                 <td><span className={"chip "+STATUS[t.status].c}><span className="d"></span>{STATUS[t.status].l}</span></td>
                 <td style={{textAlign:"right",whiteSpace:"nowrap"}}>
                   <button className="btn ghost sm" onClick={()=>setEdit(t)} style={{marginRight:8}}>{I.edit}</button>
@@ -253,17 +286,17 @@ function TourForm({init,onSave,onClose}){
 }
 
 /* ---------- Registrations ---------- */
-function Registrations({tours,setTours,players,toast}){
+function Registrations({tours,saveTour,players,toast}){
   const active=tours.filter(t=>t.status!=="done");
   const [tid,setTid]=useState(active[0]?active[0].id:null);
   const t=tours.find(x=>x.id===tid);
   const [addSel,setAddSel]=useState("");
   const pById=id=>players.find(p=>p.id===id);
-  const upd=(fn)=>setTours(prev=>prev.map(x=>x.id===tid?fn(x):x));
+  const upd=(fn)=>{ if(t) saveTour(fn({...t,regs:t.regs||[]})); };
   const toggle=(pid)=>upd(t=>({...t,regs:t.regs.map(r=>r.pid===pid?{...r,checked:!r.checked}:r)}));
   const remove=(pid)=>upd(t=>({...t,regs:t.regs.filter(r=>r.pid!==pid)}));
   const add=()=>{ if(!addSel)return; upd(t=>({...t,regs:[...t.regs,{pid:addSel,checked:false}]})); setAddSel(""); toast("Игрок добавлен в запись"); };
-  const notReg=players.filter(p=> t && !t.regs.some(r=>r.pid===p.id));
+  const notReg=players.filter(p=> t && !(t.regs||[]).some(r=>r.pid===p.id));
   return (
     <div>
       <div className="head"><div><h1>Записи на турниры</h1><div className="sub">Кто записан и кто пришёл</div></div></div>
@@ -271,7 +304,7 @@ function Registrations({tours,setTours,players,toast}){
         <select className="inp" style={{maxWidth:280}} value={tid||""} onChange={e=>setTid(e.target.value)}>
           {active.map(t=><option key={t.id} value={t.id}>{t.name} · {fmtDate(t.date)}</option>)}
         </select>
-        {t && <span className="count">{t.regs.length} / {t.max} мест · пришло {t.regs.filter(r=>r.checked).length}</span>}
+        {t && <span className="count">{(t.regs||[]).length} / {t.max} мест · пришло {(t.regs||[]).filter(r=>r.checked).length}</span>}
       </div>
       {t ? <>
       <div className="selbar">
@@ -285,7 +318,7 @@ function Registrations({tours,setTours,players,toast}){
         <table className="tbl">
           <thead><tr><th>Игрок</th><th>Очки</th><th>Уровень</th><th>Пришёл</th><th></th></tr></thead>
           <tbody>
-            {t.regs.map(r=>{const p=pById(r.pid);return(
+            {(t.regs||[]).map(r=>{const p=pById(r.pid);return(
               <tr className="rowh" key={r.pid}>
                 <td><Uname p={p}/></td>
                 <td className="mono"><span className="coin"></span>{p?p.pts.toLocaleString("ru"):"—"}</td>
@@ -296,7 +329,7 @@ function Registrations({tours,setTours,players,toast}){
             );})}
           </tbody>
         </table>
-        {!t.regs.length && <div className="empty"><div className="s">♥</div><div style={{marginTop:10}}>Никто ещё не записался</div></div>}
+        {!(t.regs||[]).length && <div className="empty"><div className="s">♥</div><div style={{marginTop:10}}>Никто ещё не записался</div></div>}
       </div>
       </> : <div className="panel"><div className="empty">Нет турниров с открытой записью</div></div>}
     </div>
@@ -304,7 +337,7 @@ function Registrations({tours,setTours,players,toast}){
 }
 
 /* ---------- Results ---------- */
-function Results({tours,setTours,players,setPlayers,toast}){
+function Results({tours,saveTour,savePlayer,players,toast}){
   const done=tours;
   const [tid,setTid]=useState(tours[0]?tours[0].id:null);
   const t=tours.find(x=>x.id===tid);
@@ -313,18 +346,15 @@ function Results({tours,setTours,players,setPlayers,toast}){
   React.useEffect(()=>{
     if(!t)return;
     const init={};
-    t.regs.forEach(r=>{const ex=t.results.find(x=>x.pid===r.pid); init[r.pid]={place:ex?ex.place:"",pts:ex?ex.pts:""};});
+    (t.regs||[]).forEach(r=>{const ex=(t.results||[]).find(x=>x.pid===r.pid); init[r.pid]={place:ex?ex.place:"",pts:ex?ex.pts:""};});
     setRows(init);
   },[tid]);
   const setCell=(pid,k,v)=>setRows(p=>({...p,[pid]:{...p[pid],[k]:v}}));
   const commit=()=>{
     const results=Object.entries(rows).filter(([_,v])=>v.place!=="").map(([pid,v])=>({pid,place:+v.place,pts:+v.pts||0}));
-    setTours(prev=>prev.map(x=>x.id===tid?{...x,status:"done",results}:x));
-    // начисляем очки поверх (демо: устанавливаем прибавку)
-    setPlayers(prev=>prev.map(p=>{
-      const r=results.find(x=>x.pid===p.id);
-      return r?{...p,pts:p.pts+r.pts,games:p.games+1}:p;
-    }));
+    saveTour({...t,status:"done",results});
+    // начисляем очки игрокам (демо: прибавка сверху)
+    results.forEach(r=>{const p=pById(r.pid); if(p) savePlayer({...p,pts:p.pts+r.pts,games:p.games+1});});
     toast("Результаты сохранены, очки начислены");
   };
   return (
@@ -342,7 +372,7 @@ function Results({tours,setTours,players,setPlayers,toast}){
         <table className="tbl">
           <thead><tr><th style={{width:90}}>Место</th><th>Игрок</th><th style={{width:120}}>Очки</th><th>Текущий рейтинг</th></tr></thead>
           <tbody>
-            {t.regs.map(r=>{const p=pById(r.pid);const row=rows[r.pid]||{place:"",pts:""};return(
+            {(t.regs||[]).map(r=>{const p=pById(r.pid);const row=rows[r.pid]||{place:"",pts:""};return(
               <tr key={r.pid}>
                 <td><input className="mini" type="number" placeholder="#" value={row.place} onChange={e=>setCell(r.pid,"place",e.target.value)}/></td>
                 <td><Uname p={p}/></td>
@@ -352,19 +382,19 @@ function Results({tours,setTours,players,setPlayers,toast}){
             );})}
           </tbody>
         </table>
-        {!t.regs.length && <div className="empty">В этом турнире нет записанных игроков</div>}
+        {!(t.regs||[]).length && <div className="empty">В этом турнире нет записанных игроков</div>}
       </div> : <div className="panel"><div className="empty">Нет турниров</div></div>}
     </div>
   );
 }
 
 /* ---------- Players ---------- */
-function Players({players,setPlayers,toast}){
+function Players({players,savePlayer,delPlayer,toast}){
   const sorted=[...players].sort((a,b)=>b.pts-a.pts);
   const [addOpen,setAddOpen]=useState(false);
-  const upd=(id,k,v)=>setPlayers(prev=>prev.map(p=>p.id===id?{...p,[k]:v}:p));
-  const add=(u)=>{setPlayers(prev=>[...prev,{id:uid(),username:u||"@username",tier:"silver",pts:0,games:0}]);setAddOpen(false);toast("Игрок добавлен");};
-  const del=(id)=>setPlayers(prev=>prev.filter(p=>p.id!==id));
+  const upd=(id,k,v)=>{const p=players.find(x=>x.id===id); if(p) savePlayer({...p,[k]:v});};
+  const add=(u)=>{savePlayer({username:u||"@username",tier:"silver",pts:0,games:0});setAddOpen(false);toast("Игрок добавлен");};
+  const del=(id)=>delPlayer(id);
   return (
     <div>
       <div className="head"><div><h1>Игроки и рейтинг</h1><div className="sub">Уровни и ручная корректировка баллов</div></div>
@@ -413,10 +443,18 @@ function AddPlayer({onAdd,onClose}){
 /* ---------- App ---------- */
 function App(){
   const [page,setPage]=useState("tours");
-  const [tours,setTours]=useState(seedTours());
-  const [players,setPlayers]=useState(P0);
+  const [tours,setTours]=useState([]);
+  const [players,setPlayers]=useState([]);
   const [toast,setToast]=useState(null);
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(null),2200);};
+  React.useEffect(()=>{
+    store.on("players",setPlayers);
+    store.on("tournaments",setTours);
+  },[]);
+  const saveTour=(t)=>store.save("tournaments",t);
+  const delTour=(id)=>store.del("tournaments",id);
+  const savePlayer=(p)=>store.save("players",p);
+  const delPlayer=(id)=>store.del("players",id);
   const NAV=[
     {k:"tours",l:"Турниры",i:I.cup},
     {k:"regs",l:"Записи",i:I.list},
@@ -435,10 +473,10 @@ function App(){
         <div className="who"><div className="av">A</div><div className="txtw"><div className="nm">Администратор</div><div className="rl">Paradise Club</div></div></div>
       </aside>
       <main className="main">
-        {page==="tours" && <Tournaments tours={tours} setTours={setTours} players={players}/>}
-        {page==="regs" && <Registrations tours={tours} setTours={setTours} players={players} toast={showToast}/>}
-        {page==="results" && <Results tours={tours} setTours={setTours} players={players} setPlayers={setPlayers} toast={showToast}/>}
-        {page==="players" && <Players players={players} setPlayers={setPlayers} toast={showToast}/>}
+        {page==="tours" && <Tournaments tours={tours} saveTour={saveTour} delTour={delTour} players={players}/>}
+        {page==="regs" && <Registrations tours={tours} saveTour={saveTour} players={players} toast={showToast}/>}
+        {page==="results" && <Results tours={tours} saveTour={saveTour} savePlayer={savePlayer} players={players} toast={showToast}/>}
+        {page==="players" && <Players players={players} savePlayer={savePlayer} delPlayer={delPlayer} toast={showToast}/>}
       </main>
       {toast && <div className="toast">{I.check}{toast}</div>}
     </div>
