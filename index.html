@@ -7,9 +7,12 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.cdnfonts.com/css/tt-commons" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
 :root{
@@ -36,7 +39,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
 body{
-  font-family:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif;
+  font-family:'TT Commons','Manrope',-apple-system,BlinkMacSystemFont,sans-serif;
   background:#000;color:var(--txt);display:flex;justify-content:center;
   -webkit-font-smoothing:antialiased;letter-spacing:.1px;
 }
@@ -58,7 +61,7 @@ body{
 .tg-bar .x{font-size:20px;color:#7a7a84;font-weight:300;}
 .tg-bar .pill{background:rgba(255,255,255,.06);border-radius:20px;padding:5px 13px;display:flex;align-items:center;gap:7px;font-size:13px;max-width:230px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .tg-bar .dots{margin-left:auto;color:#7a7a84;letter-spacing:2px;}
-.suit{color:var(--crimson);font-size:12px;}
+.suit{display:inline-flex;align-items:center;}
 
 .screen{position:relative;z-index:2;padding:12px 20px 118px;animation:fade .4s cubic-bezier(.2,.7,.2,1);}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -79,10 +82,9 @@ body{
 .eyebrow .dot.g{background:var(--gold);}
 
 /* brand */
-.brand{text-align:center;padding:18px 0 8px;}
-.brand .mark{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:600;letter-spacing:1px;color:#f4ece9;display:inline-flex;align-items:center;gap:12px;}
-.brand .mark .s{color:var(--crimson);font-size:26px;}
-.brand .sub{font-size:10px;letter-spacing:5px;color:var(--muted2);margin-top:4px;text-transform:uppercase;}
+.brand{text-align:center;padding:20px 0 10px;display:flex;flex-direction:column;align-items:center;gap:11px;}
+.brand .mark{font-family:'TT Commons','Manrope',sans-serif;font-size:27px;font-weight:700;letter-spacing:.4px;color:#f4ece9;}
+.brand .sub{font-size:10px;letter-spacing:5px;color:var(--muted2);text-transform:uppercase;}
 
 /* profile plate */
 .plate{background:var(--surface2);border:1px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);transition:transform .18s ease,background .18s ease;}
@@ -111,7 +113,7 @@ body{
 .banner .top{position:absolute;left:20px;right:16px;top:18px;display:flex;justify-content:flex-end;z-index:3;}
 .banner .ttl{position:absolute;left:20px;top:24px;z-index:3;}
 .banner .ttl .n{font-weight:800;font-size:32px;line-height:.98;letter-spacing:-.6px;color:#f6ede7;text-shadow:0 6px 24px rgba(0,0,0,.5);}
-.banner .ttl .s{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--gold);opacity:.9;margin-top:8px;letter-spacing:.5px;}
+.banner .ttl .s{font-family:'TT Commons','Manrope',sans-serif;font-style:italic;font-size:24px;color:var(--gold);opacity:.9;margin-top:8px;letter-spacing:.5px;}
 .pin{font-size:11px;font-weight:700;letter-spacing:.6px;border-radius:20px;padding:6px 12px;display:flex;align-items:center;gap:7px;backdrop-filter:blur(8px);}
 .pin.live{background:rgba(52,210,155,.18);border:1px solid rgba(52,210,155,.45);color:#83f0c6;}
 .pin.rec{background:rgba(231,200,119,.16);border:1px solid rgba(231,200,119,.4);color:var(--gold);}
@@ -145,7 +147,7 @@ body{
 .battle{background:linear-gradient(135deg,rgba(231,200,119,.09),rgba(231,200,119,.02));border:1px solid rgba(231,200,119,.2);border-radius:18px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:18px;}
 .battle .t{color:var(--gold);font-weight:700;font-size:14px;letter-spacing:.2px;}
 .battle .s{color:var(--muted);font-size:12.5px;margin-top:3px;line-height:1.35;}
-.battle .i{margin-left:auto;width:26px;height:26px;border-radius:50%;border:1px solid rgba(231,200,119,.4);color:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;flex-shrink:0;}
+.battle .i{margin-left:auto;width:26px;height:26px;border-radius:50%;border:1px solid rgba(231,200,119,.4);color:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:'TT Commons','Manrope',sans-serif;font-style:italic;font-size:15px;flex-shrink:0;}
 
 /* my rank */
 .myrank{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px;}
@@ -241,7 +243,7 @@ body{
 .onb-scene .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,7,10,.55) 0%,rgba(9,7,10,.15) 34%,rgba(7,5,8,.9) 72%,#09070a 100%);}
 .onb-logo{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding-bottom:40px;}
 .onb-logo .mark{filter:drop-shadow(0 0 26px rgba(255,255,255,.28));}
-.onb-logo .wm{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:8px;color:#f4ece9;text-transform:uppercase;text-indent:8px;}
+.onb-logo .wm{font-family:'TT Commons','Manrope',sans-serif;font-size:30px;font-weight:600;letter-spacing:8px;color:#f4ece9;text-transform:uppercase;text-indent:8px;}
 .onb-logo .tagline{font-size:10px;letter-spacing:4px;color:var(--muted2);text-transform:uppercase;margin-top:-8px;}
 .onb-bottom{position:relative;z-index:3;padding:0 20px calc(28px + env(safe-area-inset-bottom));}
 .btn-consent{width:100%;border:none;border-radius:18px;padding:19px;font-size:16px;font-weight:700;letter-spacing:.3px;color:#241606;cursor:pointer;background:linear-gradient(180deg,#ecc873,#d8b24c);box-shadow:0 12px 30px -14px rgba(216,178,76,.6);transition:filter .15s ease,transform .15s ease;}
@@ -292,12 +294,107 @@ body{
 /* animated chart line */
 .chartline{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s ease forwards .25s;}
 @keyframes draw{to{stroke-dashoffset:0}}
+
+/* refined stat card */
+.statcard{background:var(--surface2);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(18px) saturate(1.25);-webkit-backdrop-filter:blur(18px) saturate(1.25);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;margin-top:12px;}
+.srow{display:flex;}
+.srow.bt{border-top:1px solid var(--line);}
+.scell{flex:1;padding:17px 6px;text-align:center;}
+.scell+.scell{border-left:1px solid var(--line);}
+.scell .sv{font-size:23px;font-weight:800;letter-spacing:-.6px;}
+.scell .sv.g{color:var(--gold);} .scell .sv.e{color:var(--crimson);}
+.scell .sl{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted2);margin-top:7px;}
+
+/* settings sheet */
+.set-head{display:flex;align-items:center;margin-bottom:20px;}
+.set-head h3{font-size:20px;font-weight:700;}
+.xbtn{margin-left:auto;font-size:26px;line-height:1;color:var(--muted2);cursor:pointer;font-weight:300;}
+.field2{margin-bottom:20px;}
+.field2 label{display:block;font-size:12px;letter-spacing:.4px;color:var(--muted);margin-bottom:8px;}
+.inp2{width:100%;background:rgba(0,0,0,.28);border:1px solid var(--line2);border-radius:14px;padding:15px;color:var(--txt);font-size:16px;font-family:inherit;outline:none;transition:border .15s;}
+.inp2:focus{border-color:var(--gold-dim);}
+.hint{font-size:12px;color:var(--muted2);margin-top:8px;line-height:1.45;}
+.ava-row{display:flex;align-items:center;gap:14px;}
+.ava-prev{width:64px;height:64px;border-radius:16px;overflow:hidden;background:var(--surface3);flex-shrink:0;}
+.ava-prev img{width:100%;height:100%;object-fit:cover;display:block;}
+.btn-file{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;background:rgba(0,0,0,.28);border:1px solid var(--line2);border-radius:14px;padding:16px;color:var(--txt);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:.15s;}
+.btn-file:active{background:rgba(0,0,0,.42);}
+.btn-file svg{width:19px;height:19px;stroke:var(--muted);fill:none;stroke-width:1.6;}
+.rm{margin-top:12px;color:var(--crimson);font-size:14px;font-weight:600;cursor:pointer;display:inline-block;}
+.set-foot{display:flex;gap:12px;margin-top:6px;}
+.set-foot .btn{flex:1;margin-top:0;}
+
+/* live tournament sheet */
+.live-hd{display:flex;align-items:center;gap:12px;}
+.live-hd h3{font-size:20px;font-weight:700;}
+.live-hd .lv{width:9px;height:9px;border-radius:50%;background:var(--crimson);box-shadow:0 0 10px var(--crimson);animation:pulse 1.6s infinite;}
+.live-sub{display:flex;gap:12px;margin:16px 0 6px;}
+.live-sub .ls{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 8px;text-align:center;}
+.live-sub .ls .n{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+.live-sub .ls .n.e{color:var(--crimson);} .live-sub .ls .n.m{color:var(--muted2);}
+.live-sub .ls .c{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;}
+.lgroup-h{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin:18px 2px 8px;display:flex;align-items:center;gap:8px;}
+.lgroup-h .d{width:6px;height:6px;border-radius:50%;}
+.lgroup-h .d.in{background:var(--crimson);box-shadow:0 0 8px var(--crimson);} .lgroup-h .d.out{background:var(--muted2);}
+.lrow{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line);}
+.lrow .la{width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.lrow .ln{font-weight:600;font-size:14.5px;}
+.lrow.out .ln{color:var(--muted2);}
+.lrow .lx{margin-left:auto;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:5px;}
+.lrow .lx.stack{color:var(--gold);} .lrow .lx.place{color:var(--muted2);font-weight:600;}
+.livescroll{max-height:50vh;overflow-y:auto;margin:0 -4px;padding:0 4px;}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 const {useState} = React;
+
+/* ================= Общий store (Firebase ↔ локальный fallback) ================= */
+/* Тот же конфиг, что в админке (Firebase → Project settings → Config). До этого — локальные демо-данные. */
+const uid=()=>Math.random().toString(36).slice(2,9);
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBAVQaGGRuVgmUT_r-o2g0HzgzdHYPgWQ0",
+  authDomain: "paradise-c6c00.firebaseapp.com",
+  databaseURL: "https://paradise-c6c00-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "paradise-c6c00",
+  appId: "1:1050905668185:web:bcf3109d4fa2c9a9311f48"
+};
+const FB_ON = FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.databaseURL.indexOf("PASTE_HERE")<0 && window.firebase;
+let _db=null;
+if(FB_ON){ try{ firebase.initializeApp(FIREBASE_CONFIG); _db=firebase.database(); }catch(e){ console.warn("Firebase:",e); } }
+const _local={tournaments:{},players:{},subs:{tournaments:[],players:[]}};
+const _arr=(c)=>Object.entries(_local[c]).map(([id,v])=>({id,...v}));
+const _emit=(c)=>_local.subs[c].forEach(cb=>cb(_arr(c)));
+const _clean=(o)=>JSON.parse(JSON.stringify(o));
+const store={
+  on(c,cb){
+    if(FB_ON){ _db.ref(c).on("value",s=>{const v=s.val()||{};cb(Object.entries(v).map(([id,x])=>({id,...x})));}); }
+    else { _local.subs[c].push(cb); cb(_arr(c)); }
+  },
+  save(c,item){
+    const id=item.id||(FB_ON?_db.ref(c).push().key:uid());
+    const data=_clean({...item,id});
+    if(FB_ON) _db.ref(c+"/"+id).set(data); else { _local[c][id]=data; _emit(c); }
+    return id;
+  },
+  del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove(); else { delete _local[c][id]; _emit(c); } },
+  seed(c,items){
+    if(FB_ON){ _db.ref(c).once("value",s=>{ if(!s.exists()){ const m={}; items.forEach(it=>{const id=it.id||_db.ref(c).push().key; m[id]=_clean({...it,id});}); _db.ref(c).set(m);} }); }
+    else if(!Object.keys(_local[c]).length){ items.forEach(it=>{const id=it.id||uid(); _local[c][id]=_clean({...it,id});}); _emit(c); }
+  }
+};
+const MONTHS=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+const MONTHS_F=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const WD=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+const fmtFull=(dd)=>{const x=new Date((dd||"")+"T00:00:00");return isNaN(x.getTime())?dd:`${x.getDate()} ${MONTHS_F[x.getMonth()]} ${x.getFullYear()} г.`;};
+function toCard(t,i){
+  const d=new Date((t.date||"")+"T00:00:00");
+  const dateStr=isNaN(d.getTime())?t.date:`${d.getDate()} ${MONTHS[d.getMonth()]}, ${WD[d.getDay()]}`;
+  const regs=(t.regs||[]).length;
+  return {id:t.id,name:t.name,sub:"Tourney",cls:["hh","free","cls"][i%3],date:dateStr,time:t.time,
+    players:`${regs} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status};
+}
 
 /* плавный счётчик чисел */
 const useCountUp=(target,dur=1000)=>{
@@ -338,38 +435,27 @@ if(TG){
 }
 const IN_TG = !!(TG && TG.initData && TG.initData.length); // реально внутри Telegram
 const TGU = TG && TG.initDataUnsafe && TG.initDataUnsafe.user; // {username, first_name, photo_url, ...}
-const ME = {
-  name: TGU ? (TGU.username ? "@"+TGU.username : TGU.first_name) : "@username",
-  photo: TGU && TGU.photo_url ? TGU.photo_url : null,
-  handle:"", tier:"SILVER", pts:643, toGold:857, games:2, wins:0, rank:58
+/* стабильный id игрока: из Telegram, иначе dev-ник для теста в браузере (?u=ник) */
+const _q=new URLSearchParams(location.search);
+const MY_ID = TGU && TGU.id ? "tg"+TGU.id : ("dev-"+(_q.get("u")||"ceoblaze"));
+const IDENTITY = {
+  name: TGU ? (TGU.username ? "@"+TGU.username : TGU.first_name) : ("@"+(_q.get("u")||"ceoblaze")),
+  photo: TGU && TGU.photo_url ? TGU.photo_url : null
 };
+const GOLD_AT=1500; // порог уровня Gold
+/* живой профиль игрока: id/ник/фото фиксированы, статы приходят из store (обновляются в App) */
+const ME = { id:MY_ID, name:IDENTITY.name, photo:IDENTITY.photo, handle:"", tier:"SILVER", pts:0, toGold:GOLD_AT, games:0, wins:0, rank:1 };
 /* аватар текущего игрока: фото из Telegram, иначе плейсхолдер */
-const MeAva = () => ME.photo
-  ? <img src={ME.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+const MeAva = ({me}) => (me||ME).photo
+  ? <img src={(me||ME).photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
   : <EmptyAva/>;
-const TOP = [
-  {n:"@username", p:14971},
-  {n:"@username", p:12393},
-  {n:"@username", p:10817},
-  {n:"@username", p:9420},
-  {n:"@username", p:8115},
-  {n:"@username", p:7640},
-  {n:"@username", p:6890},
-];
-const LIVE = {name:"ТВОЙ ТУРНИР", sub:"Tourney", cls:"hh", date:"27 июля, Пн", time:"19:10", players:"24 / 60", buyin:"1 500 ₽", stack:"20 000", reg:"до 20:00"};
-const OPEN = [
-  {name:"ТВОЙ ТУРНИР", sub:"Tourney", cls:"free", date:"28 июля, Вт", time:"19:00", players:"12 / 60", buyin:"Free", stack:"15 000", reg:"до 19:00"},
-  {name:"ТВОЙ ТУРНИР", sub:"Tourney", cls:"cls", date:"30 июля, Чт", time:"19:30", players:"8 / 60", buyin:"3 000 ₽", stack:"40 000", reg:"до 20:30"},
-];
 
-/* индивидуальная история игрока — на её основе строится вся аналитика */
-const HISTORY = [
-  {name:"ТВОЙ ТУРНИР", date:"12 июля 2026 г.", place:6, of:34, pts:520},
-  {name:"ТВОЙ ТУРНИР", date:"18 июля 2026 г.", place:14, of:20, pts:123},
-];
-const ACTIVE = [
-  {name:"ТВОЙ ТУРНИР", date:"27 июля 2026 г.", note:"Идёт сейчас"},
-];
+/* логотип клуба (эмблема) — заменяется присланным SVG */
+const Logo = ({size=88, color="#fff"}) => (
+  <svg width={size} height={Math.round(size*658/653)} viewBox="0 0 653 658" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:"block"}}>
+    <path d="M345.512 548.155C354.895 548.155 363.063 554.34 366.474 563.068C379.356 596.032 399.299 620.916 420.044 635.225C423.577 637.662 425.87 641.584 425.87 645.871C425.87 652.57 420.431 658 413.722 658H242.828C236.119 658 230.68 652.57 230.68 645.871C230.68 641.584 232.973 637.662 236.505 635.225C257.25 620.916 277.193 596.032 290.075 563.068C293.486 554.34 301.654 548.155 311.038 548.155H345.512ZM184.96 162.315C190.597 157.086 198.596 155.107 205.876 157.595C223.146 163.498 238.339 170.354 249.221 178.194C257.7 184.305 251.226 193.532 240.858 192.454C177.318 185.85 79.7603 209.18 57.8225 344.726C57.5451 346.447 59.547 347.65 60.8446 346.498C91.9676 318.853 160.585 269.707 225.27 259.156C232.659 257.951 236.106 263.175 230.946 268.644C204.661 296.499 128.485 368.435 220.445 504.988C221.516 506.576 224.109 505.806 223.977 503.891C220.797 457.957 232.042 367.67 293.839 292.603C301.036 283.862 314.175 289.156 313.871 300.514C312.051 368.399 299.43 442.878 280.196 521.099C278.881 526.447 275.428 531.161 270.648 533.908C76.4196 645.537 -129.462 404.072 103.816 229.546C135.144 206.104 161.911 183.7 184.96 162.315ZM447.538 158.084C454.827 155.553 462.858 157.522 468.515 162.762C491.459 184.012 518.074 206.267 549.184 229.546C781.913 403.661 577.547 644.401 383.724 534.694C378.831 531.924 375.315 527.103 374.026 521.637C355.557 443.347 343.749 369.367 342.072 301.877C341.789 290.483 354.994 285.208 362.159 294.022C422.938 368.804 434.023 458.245 430.864 503.891C430.732 505.806 433.326 506.576 434.396 504.988C526.356 368.435 450.18 296.499 423.894 268.644C418.734 263.175 422.181 257.95 429.571 259.156C494.256 269.706 562.873 318.853 593.996 346.498C595.294 347.649 597.296 346.447 597.018 344.726C575.08 209.178 477.519 185.849 413.979 192.454C403.611 193.532 397.14 184.305 405.62 178.194C416.201 170.57 430.859 163.876 447.538 158.084ZM306.661 11.3844C315.297 -3.79824 337.693 -3.79352 346.325 11.3909C356.943 30.0671 369.527 50.0378 385.399 71.338C394.041 82.9373 389.624 99.9258 377.245 107.426C361.729 116.827 348.692 127.973 338.561 138.885C332.655 145.245 322.186 145.245 316.28 138.885C305.914 127.72 292.505 116.31 276.511 106.776C264.017 99.3281 259.481 82.2442 268.147 70.5727C283.752 49.5565 296.164 29.8385 306.661 11.3844Z" fill={color}/>
+  </svg>
+);
 
 /* производные метрики */
 function analytics(h){
@@ -407,38 +493,42 @@ function Meta({t}){
     </div>
   );
 }
-function TCard({t, live, onReg}){
+function TCard({t, live, done, onReg, onWatch}){
   return (
     <div className="tcard">
-      <div className={"banner "+t.cls}>
+      <div className={"banner "+t.cls} style={done?{filter:"saturate(.7) brightness(.85)"}:null}>
         <div className="glow"></div>
         <div className="suits"><b className="a">♠</b></div>
         <div className="scrim"></div>
         <div className="top">
           {live ? <div className="pin live"><span className="lv"></span>LIVE</div>
+                : done ? <div className="pin" style={{background:"rgba(255,255,255,.08)",color:"var(--muted)"}}>Завершён</div>
                 : <div className="pin rec"><span className="lv"></span>Запись открыта</div>}
         </div>
         <div className="ttl"><div className="n">{t.name}</div><div className="s">{t.sub}</div></div>
         <div className="chips">
           <div className="chip gold"><span className="ck">Бай-ин</span><span className="cv">{t.buyin}</span></div>
           <div className="chip"><span className="ck">Стек</span><span className="cv">{t.stack}</span></div>
-          <div className="chip"><span className="ck">Регистрация</span><span className="cv">{t.reg}</span></div>
+          <div className="chip"><span className="ck">{done?"Игроков":"Регистрация"}</span><span className="cv">{done?t.players:t.reg}</span></div>
         </div>
       </div>
       <Meta t={t}/>
       {live
-        ? <div className="cta watch"><span className="lv"></span>Турнир идёт — смотреть</div>
+        ? <div className="cta watch" onClick={()=>onWatch&&onWatch(t)}><span className="lv"></span>Турнир идёт — смотреть</div>
+        : done
+        ? <div className="cta" style={{color:"var(--muted2)",border:"1px solid var(--line)"}}>Турнир завершён</div>
         : <div className="cta reg" onClick={()=>onReg(t)}>Записаться</div>}
     </div>
   );
 }
 
-function Home({onReg, go}){
+function Home({live, open, onReg, onWatch, go}){
   const homePts=useCountUp(ME.pts,1100);
   return (
     <div className="screen">
       <div className="brand">
-        <div className="mark"><span className="s">♠</span>Paradise<span className="s">♥</span></div>
+        <Logo size={50} color="#eef5f1"/>
+        <div className="mark">Paradise</div>
         <div className="sub">Клуб спортивного покера</div>
       </div>
       <div className="plate" style={{cursor:"pointer"}} onClick={()=>go("rate")}>
@@ -452,16 +542,22 @@ function Home({onReg, go}){
         <span className="chev">›</span>
       </div>
 
-      <div className="eyebrow"><span className="dot"></span>Идёт сейчас<span className="all">Все →</span></div>
-      <TCard t={LIVE} live onReg={onReg}/>
+      {live && <>
+        <div className="eyebrow"><span className="dot"></span>Идёт сейчас<span className="all" onClick={()=>go("tour")}>Все →</span></div>
+        <TCard t={live} live onReg={onReg} onWatch={onWatch}/>
+      </>}
 
-      <div className="eyebrow"><span className="dot g"></span>Открыта запись<span className="all">Все →</span></div>
-      <TCard t={OPEN[0]} onReg={onReg}/>
+      {open[0] && <>
+        <div className="eyebrow"><span className="dot g"></span>Открыта запись<span className="all" onClick={()=>go("tour")}>Все →</span></div>
+        <TCard t={open[0]} onReg={onReg}/>
+      </>}
+
+      {!live && !open.length && <div className="hempty" style={{marginTop:20}}><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Турниров пока нет</div></div>}
     </div>
   );
 }
 
-function Tournaments({onReg}){
+function Tournaments({live, open, past, onReg, onWatch}){
   const [tab,setTab]=useState("act");
   return (
     <div className="screen">
@@ -471,11 +567,13 @@ function Tournaments({onReg}){
         <div className={"tab "+(tab==="past"?"on":"")} onClick={()=>setTab("past")}>Прошедшие</div>
       </div>
       {tab==="act" ? <>
-        <div className="eyebrow" style={{marginTop:6}}><span className="dot"></span>Идут сейчас</div>
-        <TCard t={LIVE} live onReg={onReg}/>
-        <div className="eyebrow"><span className="dot g"></span>Открыта запись</div>
-        {OPEN.map((t,i)=><div key={i} style={{marginBottom:16}}><TCard t={t} onReg={onReg}/></div>)}
+        {live.length>0 && <div className="eyebrow" style={{marginTop:6}}><span className="dot"></span>Идут сейчас</div>}
+        {live.map((t,i)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} live onReg={onReg} onWatch={onWatch}/></div>)}
+        {open.length>0 && <div className="eyebrow"><span className="dot g"></span>Открыта запись</div>}
+        {open.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} onReg={onReg}/></div>)}
+        {!live.length && !open.length && <div className="hempty" style={{marginTop:30}}><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Актуальных турниров нет</div></div>}
       </> : (
+        past.length ? past.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} done onReg={onReg}/></div>) :
         <div style={{textAlign:"center",color:"var(--muted2)",padding:"80px 0"}}>
           <div style={{fontSize:36,opacity:.5,color:"var(--crimson)"}}>♠</div>
           <div style={{marginTop:14,fontSize:14}}>Здесь появятся сыгранные турниры</div>
@@ -485,9 +583,10 @@ function Tournaments({onReg}){
   );
 }
 
-function Rating(){
+function Rating({players}){
   const [tab,setTab]=useState("season");
-  const [p1,p2,p3]=TOP;
+  const top=[...players].sort((a,b)=>b.pts-a.pts);
+  const [p1,p2,p3]=top;
   return (
     <div className="screen">
       <div className="h1">Рейтинг</div>
@@ -498,46 +597,47 @@ function Rating(){
       </div>
 
       <div className="myrank">
-        <div className="pos">#58</div>
+        <div className="pos">#{ME.rank}</div>
         <div className="ava" style={{width:42,height:42}}><MeAva/></div>
         <div>
           <div className="name">{ME.name} <span style={{color:"var(--muted2)",fontWeight:400,fontSize:13}}>· вы</span></div>
-          <div className="sub">2 игры сыграно</div>
+          <div className="sub">{ME.games} игры сыграно</div>
         </div>
         <div style={{flex:1}}></div>
         <div className="pts" style={{fontSize:17}}><span className="coin"></span>{ME.pts}</div>
       </div>
 
-      <div className="podium">
+      {top.length>=3 && <div className="podium">
         <div className="pod p2">
           <div className="rank">02</div>
           <div className="ring"><div className="pava" style={{width:66,height:66}}><EmptyAva/></div></div>
-          <div className="pn">{p2.n}</div>
-          <div className="pp"><span className="coin"></span>{p2.p.toLocaleString("ru")}</div>
+          <div className="pn">{p2.username}</div>
+          <div className="pp"><span className="coin"></span>{p2.pts.toLocaleString("ru")}</div>
         </div>
         <div className="pod p1">
           <div className="rank" style={{color:"var(--gold)"}}>01</div>
           <div className="ring"><div className="pava" style={{width:88,height:88}}><EmptyAva/></div></div>
-          <div className="pn">{p1.n}</div>
-          <div className="pp"><span className="coin"></span>{p1.p.toLocaleString("ru")}</div>
+          <div className="pn">{p1.username}</div>
+          <div className="pp"><span className="coin"></span>{p1.pts.toLocaleString("ru")}</div>
         </div>
         <div className="pod p3">
           <div className="rank">03</div>
           <div className="ring"><div className="pava" style={{width:62,height:62}}><EmptyAva/></div></div>
-          <div className="pn">{p3.n}</div>
-          <div className="pp"><span className="coin"></span>{p3.p.toLocaleString("ru")}</div>
+          <div className="pn">{p3.username}</div>
+          <div className="pp"><span className="coin"></span>{p3.pts.toLocaleString("ru")}</div>
         </div>
-      </div>
+      </div>}
 
       <div style={{marginTop:16}}>
-        {TOP.slice(3).map((u,i)=>(
-          <div className="lb-row" key={i}>
+        {top.slice(3).map((u,i)=>(
+          <div className="lb-row" key={u.id}>
             <div className="rk">{i+4}</div>
             <div className="lava"><EmptyAva/></div>
-            <div className="lname">{u.n}</div>
-            <div className="lp"><span className="coin"></span>{u.p.toLocaleString("ru")}</div>
+            <div className="lname">{u.username}</div>
+            <div className="lp"><span className="coin"></span>{u.pts.toLocaleString("ru")}</div>
           </div>
         ))}
+        {!top.length && <div className="hempty"><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Рейтинг пока пуст</div></div>}
       </div>
     </div>
   );
@@ -595,7 +695,7 @@ function Onboarding({onAgree}){
     <div className="app">
       {!IN_TG && <div className="tg-bar">
         <span className="x">✕</span>
-        <span className="pill"><span className="suit">♥</span> Запись · Клуб спорт...</span>
+        <span className="pill"><span className="suit"><Logo size={12} color="#34d29b"/></span> Запись · Клуб спорт...</span>
         <span className="dots">•••</span>
       </div>}
       <div className="onb" style={IN_TG?{minHeight:"100vh"}:null}>
@@ -612,7 +712,7 @@ function Onboarding({onAgree}){
           <div className="veil"></div>
         </div>
         <div className="onb-logo">
-          <LogoMark/>
+          <Logo size={96} color="#ffffff"/>
           <div className="wm">Paradise</div>
           <div className="tagline">Клуб спортивного покера</div>
         </div>
@@ -625,34 +725,24 @@ function Onboarding({onAgree}){
   );
 }
 
-function Profile(){
+function Profile({history=[], active=[]}){
   const [htab,setHtab]=useState("past");
-  const [badgeSel,setBadgeSel]=useState(null);
-  const pct=Math.round(ME.pts/(ME.pts+ME.toGold)*100);
-  const a=analytics(HISTORY);
-  const past=[...HISTORY].reverse();
+  const [settings,setSettings]=useState(false);
+  const [,setTick]=useState(0);
+  const pct=(ME.pts+ME.toGold)>0?Math.round(ME.pts/(ME.pts+ME.toGold)*100):0;
+  const has=history.length>0;
+  const a=analytics(history);
+  const past=[...history].reverse();
   const placeColor=(p)=> p<=3?"var(--gold)":p<=10?"var(--crimson)":"#e6dada";
   const ptsAnim=useCountUp(ME.pts,1100);
   const [barW,setBarW]=useState(0);
   React.useEffect(()=>{const t=setTimeout(()=>setBarW(pct),200);return ()=>clearTimeout(t);},[]);
-  const badges=[
-    {g:"♠", n:"Дебют", d:"Сыграть первый турнир клуба", on: ME.games>=1},
-    {g:"★", n:"В призах", d:"Финишировать в топ-10 турнира", on: a.best!=null && a.best<=10},
-    {g:"♛", n:"Пьедестал", d:"Попасть в топ-3 турнира", on: a.best!=null && a.best<=3},
-    {g:"♔", n:"Чемпион", d:"Выиграть турнир Paradise", on: a.best===1},
-    {g:"◆", n:"500-клуб", d:"Набрать 500+ очков за один турнир", on: a.bestPts>=500},
-    {g:"♥", n:"Серия", d:"3 попадания в топ-10 подряд", on: a.streak>=3},
-    {g:"♣", n:"Ветеран", d:"Сыграть 10 турниров", on: ME.games>=10},
-    {g:"◈", n:"Gold", d:"Достичь уровня Gold", on: ME.tier==="GOLD"},
-  ];
-  const earned=badges.filter(b=>b.on).length;
   return (
     <div className="screen">
       <div style={{display:"flex",alignItems:"center"}}>
         <div className="h1" style={{margin:"14px 2px 22px"}}>Профиль</div>
         <div className="tools">
-          <span className="ib"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg></span>
-          <span className="ib"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg></span>
+          <span className="ib" onClick={()=>setSettings(true)}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg></span>
           <span className="ib"><svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4M15 12H3m0 0l4-4m-4 4l4 4"/></svg></span>
         </div>
       </div>
@@ -679,37 +769,26 @@ function Profile(){
         </div>
       </div>
 
-      <div className="qr">
-        <svg viewBox="0 0 24 24" width="20" height="20" style={{stroke:"var(--muted)",fill:"none",strokeWidth:1.6}}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M20 14v.01M17 20h.01M20 20v-3"/></svg>
-        <span className="lbl">Моя карточка · QR</span>
-        <div className="show">Показать ›</div>
-      </div>
-
       <div className="acard">
         <div className="ah">
           <div className="t"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 6-8"/><path d="M4 4v16h16"/></svg>Очки по турнирам</div>
-          <div className="n">{HISTORY.length} турнира</div>
+          <div className="n">{history.length} турн.</div>
         </div>
-        <PointsChart data={HISTORY}/>
+        {has ? <PointsChart data={history}/>
+             : <div className="hempty" style={{padding:"34px 0"}}><div className="s">♠</div><div style={{marginTop:10,fontSize:13.5}}>Ещё нет сыгранных турниров</div></div>}
       </div>
 
-      <div className="mgrid">
-        <div className="mtile"><div className="ml">Среднее место</div><div className="mv">{a.avg}</div></div>
-        <div className="mtile"><div className="ml">Лучшее место</div><div className="mv g">#{a.best}</div></div>
-        <div className="mtile"><div className="ml">В топ-10</div><div className="mv">{a.top10}%</div></div>
-        <div className="mtile"><div className="ml">Ср. очки</div><div className="mv">{a.avgPts}</div></div>
-        <div className="mtile"><div className="ml">Лучший результат</div><div className="mv g">+{a.bestPts}</div></div>
-        <div className="mtile"><div className="ml">Стрик топ-10</div><div className="mv c">{a.streak>0?a.streak:"—"}</div></div>
-      </div>
-
-      <div className="eyebrow"><span className="dot g"></span>Достижения<span className="all">{earned} / {badges.length}</span></div>
-      <div className="achv">
-        {badges.map((b,i)=>(
-          <div key={i} className={"badge2 "+(b.on?"on":"off")} style={{animationDelay:(i*45)+"ms"}} onClick={()=>setBadgeSel(b)}>
-            <div className="em">{b.g}</div>
-            <div className="bn">{b.n}</div>
-          </div>
-        ))}
+      <div className="statcard">
+        <div className="srow">
+          <div className="scell"><div className="sv">{has?a.avg:"—"}</div><div className="sl">Ср. место</div></div>
+          <div className="scell"><div className="sv g">{has?"#"+a.best:"—"}</div><div className="sl">Лучшее место</div></div>
+          <div className="scell"><div className="sv">{has?a.top10+"%":"—"}</div><div className="sl">В топ-10</div></div>
+        </div>
+        <div className="srow bt">
+          <div className="scell"><div className="sv">{has?a.avgPts:"—"}</div><div className="sl">Ср. очки</div></div>
+          <div className="scell"><div className="sv g">{has?"+"+a.bestPts:"—"}</div><div className="sl">Лучший</div></div>
+          <div className="scell"><div className="sv e">{has&&a.streak>0?a.streak:"—"}</div><div className="sl">Стрик топ-10</div></div>
+        </div>
       </div>
 
       <div className="eyebrow" style={{marginBottom:8}}><span className="dot"></span>История игр</div>
@@ -718,20 +797,22 @@ function Profile(){
         <div className={"htab "+(htab==="past"?"on":"")} onClick={()=>setHtab("past")}>Прошедшие</div>
       </div>
 
-      {htab==="past" ? past.map((g,i)=>(
-        <div className="gcard" key={i}>
-          <div className="place">
-            <div className="p" style={{color:placeColor(g.place)}}>#{g.place}</div>
-            <div className="of">из {g.of}</div>
+      {htab==="past" ? (
+        past.length ? past.map((g,i)=>(
+          <div className="gcard" key={i}>
+            <div className="place">
+              <div className="p" style={{color:placeColor(g.place)}}>#{g.place}</div>
+              <div className="of">из {g.of}</div>
+            </div>
+            <div>
+              <div className="gn">{g.name}</div>
+              <div className="gd">{g.date}</div>
+            </div>
+            <div className="gp"><span className="coin"></span>+{g.pts}</div>
           </div>
-          <div>
-            <div className="gn">{g.name}</div>
-            <div className="gd">{g.date}</div>
-          </div>
-          <div className="gp"><span className="coin"></span>+{g.pts}</div>
-        </div>
-      )) : (
-        ACTIVE.length ? ACTIVE.map((g,i)=>(
+        )) : <div className="hempty"><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Сыгранных турниров пока нет</div></div>
+      ) : (
+        active.length ? active.map((g,i)=>(
           <div className="gcard" key={i}>
             <div>
               <div className="gn">{g.name}</div>
@@ -742,22 +823,53 @@ function Profile(){
         )) : <div className="hempty"><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Нет активных записей</div></div>
       )}
 
-      {badgeSel && (
-        <div className="overlay" onClick={()=>setBadgeSel(null)}>
-          <div className="sheet" onClick={e=>e.stopPropagation()}>
-            <div className="grab"></div>
-            <div className="ok" style={{paddingTop:4}}>
-              <div className={"badge-big "+(badgeSel.on?"on":"off")}>{badgeSel.g}</div>
-              <h3 style={{marginTop:16}}>{badgeSel.n}</h3>
-              <div className="msub" style={{margin:"8px 0 0"}}>{badgeSel.d}</div>
-              <div className="badge-status" style={{color:badgeSel.on?"var(--crimson)":"var(--muted2)"}}>
-                {badgeSel.on?"✓ Получено":"Ещё не получено"}
-              </div>
-              <button className="btn g" onClick={()=>setBadgeSel(null)}>Закрыть</button>
-            </div>
-          </div>
+      {settings && <ProfileSettings onClose={()=>setSettings(false)} onSaved={()=>setTick(t=>t+1)}/>}
+    </div>
+  );
+}
+
+function ProfileSettings({onClose,onSaved}){
+  const [nick,setNick]=useState((ME.name||"").replace(/^@/,""));
+  const [photo,setPhoto]=useState(ME.photo);
+  const fileRef=React.useRef();
+  const pick=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setPhoto(r.result);r.readAsDataURL(f);};
+  const save=()=>{
+    const n=nick.trim();
+    const uname=n?(n.startsWith("@")?n:"@"+n):IDENTITY.name;
+    IDENTITY.name=uname; IDENTITY.photo=photo||null;
+    ME.name=uname; ME.photo=photo||null;
+    // обновляем запись игрока в общих данных (ник появится в админке)
+    store.save("players",{id:MY_ID, username:uname, tier:(ME.tier||"silver").toLowerCase(), pts:ME.pts||0, games:ME.games||0});
+    onSaved(); onClose();
+  };
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <div className="grab"></div>
+        <div className="set-head"><h3>Редактировать профиль</h3><span className="xbtn" onClick={onClose}>×</span></div>
+        <div className="field2">
+          <label>Ник</label>
+          <input className="inp2" value={nick} onChange={e=>setNick(e.target.value)} placeholder="username"/>
+          <div className="hint">Можно менять не чаще раза в 24 часа.</div>
         </div>
-      )}
+        <div className="field2">
+          <label>Аватар</label>
+          <div className="ava-row">
+            <div className="ava-prev">{photo?<img src={photo} alt=""/>:<EmptyAva/>}</div>
+            <button className="btn-file" onClick={()=>fileRef.current.click()}>
+              <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L18 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg>
+              Загрузить фото
+            </button>
+            <input type="file" accept="image/*" ref={fileRef} onChange={pick} style={{display:"none"}}/>
+          </div>
+          {photo && <div className="rm" onClick={()=>setPhoto(null)}>Удалить аватар</div>}
+          <div className="hint">JPG, PNG, WEBP, GIF. До 10 МБ. Обрежется в квадрат 512×512.</div>
+        </div>
+        <div className="set-foot">
+          <button className="btn gh" onClick={onClose}>Отмена</button>
+          <button className="btn g" onClick={save}>Сохранить</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -792,10 +904,85 @@ function RegSheet({t,onClose}){
   );
 }
 
+function LiveSheet({t,onClose}){
+  const remaining=Array.from({length:24},(_,i)=>({stack:62000-i*1950}));
+  const out=Array.from({length:36},(_,i)=>({place:25+i}));
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <div className="grab"></div>
+        <div className="live-hd"><span className="lv"></span><h3>{t.name}</h3></div>
+        <div className="msub" style={{margin:"8px 0 0"}}>Идёт сейчас · блайнды 300 / 600</div>
+        <div className="live-sub">
+          <div className="ls"><div className="n e">24</div><div className="c">В игре</div></div>
+          <div className="ls"><div className="n m">36</div><div className="c">Выбыли</div></div>
+          <div className="ls"><div className="n">60</div><div className="c">Всего</div></div>
+        </div>
+        <div className="livescroll">
+          <div className="lgroup-h"><span className="d in"></span>В игре · 24</div>
+          {remaining.map((p,i)=>(
+            <div className="lrow" key={"r"+i}>
+              <div className="la"><EmptyAva/></div>
+              <div className="ln">@username</div>
+              <div className="lx stack"><span className="coin"></span>{p.stack.toLocaleString("ru")}</div>
+            </div>
+          ))}
+          <div className="lgroup-h"><span className="d out"></span>Выбыли · 36</div>
+          {out.map((p,i)=>(
+            <div className="lrow out" key={"o"+i}>
+              <div className="la"><EmptyAva/></div>
+              <div className="ln">@username</div>
+              <div className="lx place">#{p.place} место</div>
+            </div>
+          ))}
+        </div>
+        <button className="btn gh" onClick={onClose} style={{marginTop:16}}>Закрыть</button>
+      </div>
+    </div>
+  );
+}
+
 function App(){
   const [agreed,setAgreed]=useState(false);
   const [tab,setTab]=useState("home");
   const [reg,setReg]=useState(null);
+  const [watch,setWatch]=useState(null);
+  const [tours,setTours]=useState([]);
+  const [players,setPlayers]=useState([]);
+  React.useEffect(()=>{
+    store.on("players",(arr)=>{
+      setPlayers(arr);
+      // авто-регистрация текущего игрока, чтобы он появился в админке
+      if(!arr.some(p=>p.id===MY_ID)){
+        store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0});
+      }
+    });
+    store.on("tournaments",setTours);
+  },[]);
+  // мой профиль из store
+  const myPlayer=players.find(p=>p.id===MY_ID);
+  const sortedP=[...players].sort((a,b)=>b.pts-a.pts);
+  ME.id=MY_ID;
+  ME.name=myPlayer?myPlayer.username:IDENTITY.name;
+  ME.photo=IDENTITY.photo;
+  ME.tier=(myPlayer?myPlayer.tier:"silver").toUpperCase();
+  ME.pts=myPlayer?myPlayer.pts:0;
+  ME.games=myPlayer?myPlayer.games:0;
+  ME.toGold=Math.max(0,GOLD_AT-ME.pts);
+  ME.rank=myPlayer?(sortedP.findIndex(p=>p.id===MY_ID)+1):(players.length+1);
+  // деривация карточек из данных store
+  const byDate=(a,b)=>(b.date||"").localeCompare(a.date||"");
+  const live=tours.filter(t=>t.status==="live").map(toCard);
+  const open=tours.filter(t=>t.status==="reg").sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(toCard);
+  const past=tours.filter(t=>t.status==="done").sort(byDate).map(toCard);
+  // моя история и активные записи из турниров
+  const myHistory=tours.filter(t=>t.status==="done").map(t=>{
+    const r=(t.results||[]).find(x=>x.pid===MY_ID);
+    return r?{name:t.name,date:fmtFull(t.date),place:r.place,of:(t.regs||[]).length,pts:r.pts,_d:t.date}:null;
+  }).filter(Boolean).sort((a,b)=>(a._d||"").localeCompare(b._d||""));
+  const myActive=tours.filter(t=>t.status!=="done" && (t.regs||[]).some(r=>r.pid===MY_ID))
+    .map(t=>({name:t.name,date:fmtFull(t.date),note:t.status==="live"?"Идёт сейчас":"Запись открыта"}));
+  try{ window.__paradise={players,tours,myId:MY_ID}; }catch(e){}
   if(!agreed) return <Onboarding onAgree={()=>setAgreed(true)}/>;
   const nav=[
     {k:"home",l:"Главная",i:Ico.home},
@@ -809,13 +996,13 @@ function App(){
       <div className="grain"></div>
       {!IN_TG && <div className="tg-bar">
         <span className="x">✕</span>
-        <span className="pill"><span className="suit">♥</span> Paradise · Покерный к...</span>
+        <span className="pill"><span className="suit"><Logo size={12} color="#34d29b"/></span> Paradise · Покерный к...</span>
         <span className="dots">•••</span>
       </div>}
-      {tab==="home" && <Home onReg={setReg} go={setTab}/>}
-      {tab==="tour" && <Tournaments onReg={setReg}/>}
-      {tab==="rate" && <Rating/>}
-      {tab==="prof" && <Profile/>}
+      {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={setWatch} go={setTab}/>}
+      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={setWatch}/>}
+      {tab==="rate" && <Rating players={players}/>}
+      {tab==="prof" && <Profile history={myHistory} active={myActive}/>}
       <div className="navwrap">
         <div className="nav">
           {nav.map(n=>(
@@ -826,6 +1013,7 @@ function App(){
         </div>
       </div>
       {reg && <RegSheet t={reg} onClose={()=>setReg(null)}/>}
+      {watch && <LiveSheet t={watch} onClose={()=>setWatch(null)}/>}
     </div>
   );
 }
