@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Paradise · Админка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.cdnfonts.com/css/tt-commons" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+:root{
+  --bg:#140b0f; --panel:#1b1116; --panel2:#221520; --panel3:#2c1c27;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
+  --crimson:#d95f6a; --crimson-deep:#7a1f2a;
+  --gold:#e3c274; --gold-dim:#b0924e;
+  --txt:#f4eded; --muted:#ad969b; --muted2:#7a6266;
+  --green:#57c08a; --red:#e0616d;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'TT Commons','Manrope',-apple-system,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;}
+.suitgrid{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ctext x='12' y='32' font-family='Georgia,serif' font-size='24' fill='white'%3E%E2%99%A0%3C/text%3E%3Ctext x='52' y='70' font-family='Georgia,serif' font-size='24' fill='white'%3E%E2%99%A6%3C/text%3E%3C/svg%3E");background-size:80px 80px;}
+.layout{display:flex;min-height:100vh;position:relative;z-index:1;}
+
+/* sidebar */
+.side{width:248px;flex-shrink:0;background:rgba(28,18,23,.72);backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border-right:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 22px;}
+.brand .m{font-family:'TT Commons','Manrope',sans-serif;font-size:21px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:9px;}
+.brand .s{color:var(--crimson);}
+.brand .tag{font-size:9px;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-top:2px;}
+.nav{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+.nav a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:var(--muted);font-weight:600;font-size:14.5px;cursor:pointer;transition:.15s;}
+.nav a:hover{background:var(--panel2);color:var(--txt);}
+.nav a.on{background:linear-gradient(120deg,rgba(217,95,106,.18),rgba(217,95,106,.05));color:#fff;box-shadow:inset 0 0 0 1px rgba(217,95,106,.25);}
+.nav a svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.nav a.on svg{stroke:var(--crimson);}
+.side .who{margin-top:auto;display:flex;align-items:center;gap:11px;padding:12px 10px;border-top:1px solid var(--line);}
+.side .who .av{width:34px;height:34px;border-radius:50%;background:var(--panel3);display:flex;align-items:center;justify-content:center;color:var(--gold);font-weight:700;}
+.side .who .nm{font-size:13.5px;font-weight:600;}
+.side .who .rl{font-size:11px;color:var(--muted2);}
+
+/* main */
+.main{flex:1;padding:30px 34px 60px;max-width:1180px;}
+.head{display:flex;align-items:center;margin-bottom:26px;}
+.head h1{font-size:26px;font-weight:700;letter-spacing:-.4px;}
+.head .sub{color:var(--muted2);font-size:13.5px;margin-top:4px;}
+.head .sp{flex:1;}
+
+/* buttons */
+.btn{border:none;border-radius:11px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;transition:filter .15s,transform .1s;}
+.btn:active{transform:translateY(1px);}
+.btn.gold{background:linear-gradient(180deg,#ecc873,#d8b24c);color:#241606;}
+.btn.gold:hover{filter:brightness(1.04);}
+.btn.ghost{background:transparent;border:1px solid var(--line2);color:var(--muted);}
+.btn.ghost:hover{color:#fff;border-color:var(--muted);}
+.btn.danger{background:transparent;border:1px solid rgba(224,97,109,.4);color:var(--red);}
+.btn.danger:hover{background:rgba(224,97,109,.1);}
+.btn.sm{padding:8px 13px;font-size:13px;border-radius:9px;}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;}
+
+/* cards / tables */
+.panel{background:rgba(40,26,34,.5);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{text-align:left;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted2);font-weight:700;padding:14px 18px;border-bottom:1px solid var(--line);}
+.tbl td{padding:15px 18px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr.rowh:hover td{background:var(--panel2);}
+.tname{font-weight:700;}
+.muted{color:var(--muted);}
+.mono{font-variant-numeric:tabular-nums;}
+
+/* status chips */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:20px;letter-spacing:.2px;}
+.chip .d{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.chip.live{background:rgba(224,97,109,.14);color:#ec8a92;}
+.chip.reg{background:rgba(227,194,116,.14);color:var(--gold);}
+.chip.done{background:rgba(255,255,255,.06);color:var(--muted);}
+.chip.gold{background:rgba(227,194,116,.14);color:var(--gold);}
+.chip.silver{background:rgba(255,255,255,.07);color:#c9c9d2;}
+.pill-ok{color:var(--green);} .pill-no{color:var(--muted2);}
+
+.coin{width:13px;height:13px;border-radius:50%;display:inline-block;position:relative;vertical-align:-2px;margin-right:5px;background:radial-gradient(circle at 50% 42%,#f1d78c 0 40%,#d8b24c 42%);box-shadow:inset 0 0 0 1.5px rgba(110,74,18,.55);}
+.coin::before{content:"";position:absolute;inset:2px;border-radius:50%;border:1.3px dotted rgba(110,74,18,.5);}
+.gold-t{color:var(--gold);font-weight:700;}
+
+/* form controls */
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;letter-spacing:.4px;color:var(--muted);margin-bottom:7px;font-weight:600;}
+.inp,select.inp{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:11px;padding:12px 13px;color:var(--txt);font-size:14px;font-family:inherit;outline:none;transition:.15s;}
+.inp:focus{border-color:var(--gold-dim);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+input.mini{width:74px;background:var(--panel2);border:1px solid var(--line2);border-radius:9px;padding:8px 10px;color:var(--txt);font-size:14px;text-align:center;outline:none;font-family:inherit;}
+input.mini:focus{border-color:var(--gold-dim);}
+
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;animation:f .18s;}
+@keyframes f{from{opacity:0}to{opacity:1}}
+.modal{width:100%;max-width:520px;background:rgba(44,29,37,.82);backdrop-filter:blur(28px) saturate(1.3);-webkit-backdrop-filter:blur(28px) saturate(1.3);border:1px solid var(--line2);border-radius:20px;padding:24px;box-shadow:0 30px 70px -20px #000,inset 0 1px 0 rgba(255,255,255,.07);animation:pop .2s cubic-bezier(.2,.8,.2,1);}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+.modal h3{font-size:19px;font-weight:700;margin-bottom:2px;}
+.modal .msub{color:var(--muted2);font-size:13px;margin-bottom:20px;}
+.mfoot{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}
+
+/* misc */
+.empty{padding:60px;text-align:center;color:var(--muted2);}
+.empty .s{font-size:40px;color:var(--crimson);opacity:.5;}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:3px;}
+.seg button{border:none;background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;padding:9px 16px;border-radius:9px;cursor:pointer;font-family:inherit;transition:.15s;}
+.seg button.on{background:var(--panel3);color:#fff;}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1c2a1f;border:1px solid rgba(87,192,138,.4);color:#a7e6c2;padding:13px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:80;box-shadow:0 14px 34px -12px #000;animation:pop .2s;display:flex;align-items:center;gap:9px;}
+.selbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.count{color:var(--muted2);font-size:13px;}
+.av{width:30px;height:30px;border-radius:50%;background:var(--panel3);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.av svg{width:16px;height:16px;fill:rgba(255,255,255,.35);}
+.uwrap{display:flex;align-items:center;gap:10px;}
+.togg{width:44px;height:26px;border-radius:20px;background:var(--panel3);position:relative;cursor:pointer;transition:.18s;border:1px solid var(--line2);}
+.togg.on{background:rgba(87,192,138,.3);border-color:rgba(87,192,138,.5);}
+.togg::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#e8e0e0;transition:.18s;}
+.togg.on::after{left:20px;background:#8ff0bf;}
+@media(max-width:820px){
+  .side{width:70px;padding:20px 10px;}
+  .brand .m,.brand .tag,.nav a span,.side .who .txtw{display:none;}
+  .nav a{justify-content:center;padding:12px;}
+  .main{padding:22px 16px 60px;}
+  .grid2,.grid3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="suitgrid"></div>
+<div id="root"></div>
+<script type="text/babel">
+const {useState} = React;
+const uid=()=>Math.random().toString(36).slice(2,9);
+const Logo=({size=22,color="#fff"})=>(
+  <svg width={size} height={Math.round(size*658/653)} viewBox="0 0 653 658" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:"block"}}>
+    <path d="M345.512 548.155C354.895 548.155 363.063 554.34 366.474 563.068C379.356 596.032 399.299 620.916 420.044 635.225C423.577 637.662 425.87 641.584 425.87 645.871C425.87 652.57 420.431 658 413.722 658H242.828C236.119 658 230.68 652.57 230.68 645.871C230.68 641.584 232.973 637.662 236.505 635.225C257.25 620.916 277.193 596.032 290.075 563.068C293.486 554.34 301.654 548.155 311.038 548.155H345.512ZM184.96 162.315C190.597 157.086 198.596 155.107 205.876 157.595C223.146 163.498 238.339 170.354 249.221 178.194C257.7 184.305 251.226 193.532 240.858 192.454C177.318 185.85 79.7603 209.18 57.8225 344.726C57.5451 346.447 59.547 347.65 60.8446 346.498C91.9676 318.853 160.585 269.707 225.27 259.156C232.659 257.951 236.106 263.175 230.946 268.644C204.661 296.499 128.485 368.435 220.445 504.988C221.516 506.576 224.109 505.806 223.977 503.891C220.797 457.957 232.042 367.67 293.839 292.603C301.036 283.862 314.175 289.156 313.871 300.514C312.051 368.399 299.43 442.878 280.196 521.099C278.881 526.447 275.428 531.161 270.648 533.908C76.4196 645.537 -129.462 404.072 103.816 229.546C135.144 206.104 161.911 183.7 184.96 162.315ZM447.538 158.084C454.827 155.553 462.858 157.522 468.515 162.762C491.459 184.012 518.074 206.267 549.184 229.546C781.913 403.661 577.547 644.401 383.724 534.694C378.831 531.924 375.315 527.103 374.026 521.637C355.557 443.347 343.749 369.367 342.072 301.877C341.789 290.483 354.994 285.208 362.159 294.022C422.938 368.804 434.023 458.245 430.864 503.891C430.732 505.806 433.326 506.576 434.396 504.988C526.356 368.435 450.18 296.499 423.894 268.644C418.734 263.175 422.181 257.95 429.571 259.156C494.256 269.706 562.873 318.853 593.996 346.498C595.294 347.649 597.296 346.447 597.018 344.726C575.08 209.178 477.519 185.849 413.979 192.454C403.611 193.532 397.14 184.305 405.62 178.194C416.201 170.57 430.859 163.876 447.538 158.084ZM306.661 11.3844C315.297 -3.79824 337.693 -3.79352 346.325 11.3909C356.943 30.0671 369.527 50.0378 385.399 71.338C394.041 82.9373 389.624 99.9258 377.245 107.426C361.729 116.827 348.692 127.973 338.561 138.885C332.655 145.245 322.186 145.245 316.28 138.885C305.914 127.72 292.505 116.31 276.511 106.776C264.017 99.3281 259.481 82.2442 268.147 70.5727C283.752 49.5565 296.164 29.8385 306.661 11.3844Z" fill={color}/>
+  </svg>
+);
+const UserIcon=<svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>;
+
+const I={
+  cup:<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0z"/><path d="M7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3"/><path d="M9.5 20h5M12 15v5"/></svg>,
+  list:<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>,
+  chart:<svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M8 14l3-3 3 2 4-5"/></svg>,
+  users:<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3 3-4.6 6-4.6s6 1.6 6 4.6"/><path d="M16 5a3.2 3.2 0 010 6M18 19c0-2.4-1-3.9-2.6-4.6"/></svg>,
+  plus:<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>,
+  edit:<svg viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"/></svg>,
+  trash:<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>,
+  check:<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-11"/></svg>,
+};
+
+/* ---------- seed data ---------- */
+const seedPlayers=()=>["","","","","","",""].map((_,i)=>({
+  id:uid(), username:"@username", tier:i<2?"gold":"silver",
+  pts:[14971,12393,10817,9420,8115,7640,6890][i], games:[22,19,17,14,12,10,9][i],
+}));
+const P0=seedPlayers();
+const seedTours=()=>[
+  {id:uid(), name:"ТВОЙ ТУРНИР", date:"2026-07-27", time:"19:10", buyin:"1 500 ₽", stack:"20 000", max:60, status:"live",
+    regs:P0.slice(0,4).map(p=>({pid:p.id, checked:true})), results:[]},
+  {id:uid(), name:"ТВОЙ ТУРНИР", date:"2026-07-28", time:"19:00", buyin:"Free", stack:"15 000", max:60, status:"reg",
+    regs:P0.slice(0,3).map(p=>({pid:p.id, checked:false})), results:[]},
+  {id:uid(), name:"ТВОЙ ТУРНИР", date:"2026-07-18", time:"19:30", buyin:"3 000 ₽", stack:"40 000", max:20, status:"done",
+    regs:P0.slice(0,6).map(p=>({pid:p.id, checked:true})),
+    results:P0.slice(0,6).map((p,i)=>({pid:p.id, place:i+1, pts:[520,300,200,150,123,90][i]}))},
+];
+
+const STATUS={reg:{l:"Запись",c:"reg"}, live:{l:"Идёт",c:"live"}, done:{l:"Завершён",c:"done"}};
+const fmtDate=d=>{const[y,m,dd]=d.split("-");const mm=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][+m-1];return `${+dd} ${mm} ${y}`;};
+
+function Uname({p}){return <div className="uwrap"><span className="av">{UserIcon}</span><span>{p?p.username:"—"}</span></div>;}
+
+/* ---------- Tournaments ---------- */
+function Tournaments({tours,setTours,players}){
+  const [edit,setEdit]=useState(null); // tournament obj or "new"
+  const blank={id:null,name:"ТВОЙ ТУРНИР",date:"2026-08-01",time:"19:00",buyin:"1 500 ₽",stack:"20 000",max:60,status:"reg",regs:[],results:[]};
+  const save=(t)=>{
+    setTours(prev=> t.id ? prev.map(x=>x.id===t.id?t:x) : [{...t,id:uid()},...prev]);
+    setEdit(null);
+  };
+  const del=(id)=>setTours(prev=>prev.filter(x=>x.id!==id));
+  return (
+    <div>
+      <div className="head">
+        <div><h1>Турниры</h1><div className="sub">Создание, редактирование и статусы</div></div>
+        <div className="sp"></div>
+        <button className="btn gold" onClick={()=>setEdit(blank)}>{I.plus}Создать турнир</button>
+      </div>
+      <div className="panel">
+        <table className="tbl">
+          <thead><tr><th>Название</th><th>Дата</th><th>Время</th><th>Бай-ин</th><th>Записи</th><th>Статус</th><th></th></tr></thead>
+          <tbody>
+            {tours.map(t=>(
+              <tr className="rowh" key={t.id}>
+                <td className="tname">{t.name}</td>
+                <td className="muted mono">{fmtDate(t.date)}</td>
+                <td className="mono">{t.time}</td>
+                <td className="gold-t">{t.buyin}</td>
+                <td className="mono">{t.regs.length} / {t.max}</td>
+                <td><span className={"chip "+STATUS[t.status].c}><span className="d"></span>{STATUS[t.status].l}</span></td>
+                <td style={{textAlign:"right",whiteSpace:"nowrap"}}>
+                  <button className="btn ghost sm" onClick={()=>setEdit(t)} style={{marginRight:8}}>{I.edit}</button>
+                  <button className="btn danger sm" onClick={()=>del(t.id)}>{I.trash}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!tours.length && <div className="empty"><div className="s">♠</div><div style={{marginTop:10}}>Пока нет турниров</div></div>}
+      </div>
+      {edit && <TourForm init={edit} onSave={save} onClose={()=>setEdit(null)}/>}
+    </div>
+  );
+}
+function TourForm({init,onSave,onClose}){
+  const [t,setT]=useState(init);
+  const set=(k,v)=>setT(p=>({...p,[k]:v}));
+  return (
+    <div className="ov" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h3>{init.id?"Редактировать турнир":"Новый турнир"}</h3>
+        <div className="msub">Заполните параметры турнира</div>
+        <div className="field"><label>Название</label><input className="inp" value={t.name} onChange={e=>set("name",e.target.value)}/></div>
+        <div className="grid2">
+          <div className="field"><label>Дата</label><input type="date" className="inp" value={t.date} onChange={e=>set("date",e.target.value)}/></div>
+          <div className="field"><label>Время</label><input type="time" className="inp" value={t.time} onChange={e=>set("time",e.target.value)}/></div>
+        </div>
+        <div className="grid3">
+          <div className="field"><label>Бай-ин</label><input className="inp" value={t.buyin} onChange={e=>set("buyin",e.target.value)}/></div>
+          <div className="field"><label>Стартовый стек</label><input className="inp" value={t.stack} onChange={e=>set("stack",e.target.value)}/></div>
+          <div className="field"><label>Мест</label><input type="number" className="inp" value={t.max} onChange={e=>set("max",+e.target.value)}/></div>
+        </div>
+        <div className="field"><label>Статус</label>
+          <select className="inp" value={t.status} onChange={e=>set("status",e.target.value)}>
+            <option value="reg">Запись открыта</option>
+            <option value="live">Идёт сейчас</option>
+            <option value="done">Завершён</option>
+          </select>
+        </div>
+        <div className="mfoot">
+          <button className="btn ghost" onClick={onClose}>Отмена</button>
+          <button className="btn gold" onClick={()=>onSave(t)}>{I.check}Сохранить</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Registrations ---------- */
+function Registrations({tours,setTours,players,toast}){
+  const active=tours.filter(t=>t.status!=="done");
+  const [tid,setTid]=useState(active[0]?active[0].id:null);
+  const t=tours.find(x=>x.id===tid);
+  const [addSel,setAddSel]=useState("");
+  const pById=id=>players.find(p=>p.id===id);
+  const upd=(fn)=>setTours(prev=>prev.map(x=>x.id===tid?fn(x):x));
+  const toggle=(pid)=>upd(t=>({...t,regs:t.regs.map(r=>r.pid===pid?{...r,checked:!r.checked}:r)}));
+  const remove=(pid)=>upd(t=>({...t,regs:t.regs.filter(r=>r.pid!==pid)}));
+  const add=()=>{ if(!addSel)return; upd(t=>({...t,regs:[...t.regs,{pid:addSel,checked:false}]})); setAddSel(""); toast("Игрок добавлен в запись"); };
+  const notReg=players.filter(p=> t && !t.regs.some(r=>r.pid===p.id));
+  return (
+    <div>
+      <div className="head"><div><h1>Записи на турниры</h1><div className="sub">Кто записан и кто пришёл</div></div></div>
+      <div className="selbar">
+        <select className="inp" style={{maxWidth:280}} value={tid||""} onChange={e=>setTid(e.target.value)}>
+          {active.map(t=><option key={t.id} value={t.id}>{t.name} · {fmtDate(t.date)}</option>)}
+        </select>
+        {t && <span className="count">{t.regs.length} / {t.max} мест · пришло {t.regs.filter(r=>r.checked).length}</span>}
+      </div>
+      {t ? <>
+      <div className="selbar">
+        <select className="inp" style={{maxWidth:260}} value={addSel} onChange={e=>setAddSel(e.target.value)}>
+          <option value="">Добавить игрока…</option>
+          {notReg.map(p=><option key={p.id} value={p.id}>{p.username} · {p.pts} очк</option>)}
+        </select>
+        <button className="btn ghost sm" onClick={add}>{I.plus}Добавить</button>
+      </div>
+      <div className="panel">
+        <table className="tbl">
+          <thead><tr><th>Игрок</th><th>Очки</th><th>Уровень</th><th>Пришёл</th><th></th></tr></thead>
+          <tbody>
+            {t.regs.map(r=>{const p=pById(r.pid);return(
+              <tr className="rowh" key={r.pid}>
+                <td><Uname p={p}/></td>
+                <td className="mono"><span className="coin"></span>{p?p.pts.toLocaleString("ru"):"—"}</td>
+                <td><span className={"chip "+(p&&p.tier==="gold"?"gold":"silver")}>{p&&p.tier==="gold"?"GOLD":"SILVER"}</span></td>
+                <td><div className={"togg"+(r.checked?" on":"")} onClick={()=>toggle(r.pid)}></div></td>
+                <td style={{textAlign:"right"}}><button className="btn danger sm" onClick={()=>remove(r.pid)}>{I.trash}</button></td>
+              </tr>
+            );})}
+          </tbody>
+        </table>
+        {!t.regs.length && <div className="empty"><div className="s">♥</div><div style={{marginTop:10}}>Никто ещё не записался</div></div>}
+      </div>
+      </> : <div className="panel"><div className="empty">Нет турниров с открытой записью</div></div>}
+    </div>
+  );
+}
+
+/* ---------- Results ---------- */
+function Results({tours,setTours,players,setPlayers,toast}){
+  const done=tours;
+  const [tid,setTid]=useState(tours[0]?tours[0].id:null);
+  const t=tours.find(x=>x.id===tid);
+  const pById=id=>players.find(p=>p.id===id);
+  const [rows,setRows]=useState({}); // pid -> {place,pts}
+  React.useEffect(()=>{
+    if(!t)return;
+    const init={};
+    t.regs.forEach(r=>{const ex=t.results.find(x=>x.pid===r.pid); init[r.pid]={place:ex?ex.place:"",pts:ex?ex.pts:""};});
+    setRows(init);
+  },[tid]);
+  const setCell=(pid,k,v)=>setRows(p=>({...p,[pid]:{...p[pid],[k]:v}}));
+  const commit=()=>{
+    const results=Object.entries(rows).filter(([_,v])=>v.place!=="").map(([pid,v])=>({pid,place:+v.place,pts:+v.pts||0}));
+    setTours(prev=>prev.map(x=>x.id===tid?{...x,status:"done",results}:x));
+    // начисляем очки поверх (демо: устанавливаем прибавку)
+    setPlayers(prev=>prev.map(p=>{
+      const r=results.find(x=>x.pid===p.id);
+      return r?{...p,pts:p.pts+r.pts,games:p.games+1}:p;
+    }));
+    toast("Результаты сохранены, очки начислены");
+  };
+  return (
+    <div>
+      <div className="head"><div><h1>Результаты и очки</h1><div className="sub">Впишите места и очки — рейтинг обновится</div></div>
+        <div className="sp"></div>
+        {t && <button className="btn gold" onClick={commit}>{I.check}Сохранить результаты</button>}
+      </div>
+      <div className="selbar">
+        <select className="inp" style={{maxWidth:300}} value={tid||""} onChange={e=>setTid(e.target.value)}>
+          {done.map(t=><option key={t.id} value={t.id}>{t.name} · {fmtDate(t.date)} · {STATUS[t.status].l}</option>)}
+        </select>
+      </div>
+      {t ? <div className="panel">
+        <table className="tbl">
+          <thead><tr><th style={{width:90}}>Место</th><th>Игрок</th><th style={{width:120}}>Очки</th><th>Текущий рейтинг</th></tr></thead>
+          <tbody>
+            {t.regs.map(r=>{const p=pById(r.pid);const row=rows[r.pid]||{place:"",pts:""};return(
+              <tr key={r.pid}>
+                <td><input className="mini" type="number" placeholder="#" value={row.place} onChange={e=>setCell(r.pid,"place",e.target.value)}/></td>
+                <td><Uname p={p}/></td>
+                <td><input className="mini" type="number" placeholder="0" value={row.pts} onChange={e=>setCell(r.pid,"pts",e.target.value)}/></td>
+                <td className="mono muted"><span className="coin"></span>{p?p.pts.toLocaleString("ru"):"—"}</td>
+              </tr>
+            );})}
+          </tbody>
+        </table>
+        {!t.regs.length && <div className="empty">В этом турнире нет записанных игроков</div>}
+      </div> : <div className="panel"><div className="empty">Нет турниров</div></div>}
+    </div>
+  );
+}
+
+/* ---------- Players ---------- */
+function Players({players,setPlayers,toast}){
+  const sorted=[...players].sort((a,b)=>b.pts-a.pts);
+  const [addOpen,setAddOpen]=useState(false);
+  const upd=(id,k,v)=>setPlayers(prev=>prev.map(p=>p.id===id?{...p,[k]:v}:p));
+  const add=(u)=>{setPlayers(prev=>[...prev,{id:uid(),username:u||"@username",tier:"silver",pts:0,games:0}]);setAddOpen(false);toast("Игрок добавлен");};
+  const del=(id)=>setPlayers(prev=>prev.filter(p=>p.id!==id));
+  return (
+    <div>
+      <div className="head"><div><h1>Игроки и рейтинг</h1><div className="sub">Уровни и ручная корректировка баллов</div></div>
+        <div className="sp"></div>
+        <button className="btn gold" onClick={()=>setAddOpen(true)}>{I.plus}Добавить игрока</button>
+      </div>
+      <div className="panel">
+        <table className="tbl">
+          <thead><tr><th style={{width:60}}>#</th><th>Игрок</th><th style={{width:150}}>Очки</th><th>Игр</th><th style={{width:150}}>Уровень</th><th></th></tr></thead>
+          <tbody>
+            {sorted.map((p,i)=>(
+              <tr className="rowh" key={p.id}>
+                <td className="mono" style={{color:i<3?"var(--gold)":"var(--muted2)",fontWeight:700}}>{i+1}</td>
+                <td><Uname p={p}/></td>
+                <td><span className="coin"></span><input className="mini" type="number" value={p.pts} onChange={e=>upd(p.id,"pts",+e.target.value)}/></td>
+                <td className="mono muted">{p.games}</td>
+                <td>
+                  <select className="inp" style={{padding:"8px 10px",maxWidth:120}} value={p.tier} onChange={e=>upd(p.id,"tier",e.target.value)}>
+                    <option value="silver">Silver</option>
+                    <option value="gold">Gold</option>
+                  </select>
+                </td>
+                <td style={{textAlign:"right"}}><button className="btn danger sm" onClick={()=>del(p.id)}>{I.trash}</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {addOpen && <AddPlayer onAdd={add} onClose={()=>setAddOpen(false)}/>}
+    </div>
+  );
+}
+function AddPlayer({onAdd,onClose}){
+  const [u,setU]=useState("@");
+  return (
+    <div className="ov" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:420}}>
+        <h3>Новый игрок</h3><div className="msub">Позже профиль подтянется из Telegram</div>
+        <div className="field"><label>Username</label><input className="inp" value={u} onChange={e=>setU(e.target.value)} placeholder="@username"/></div>
+        <div className="mfoot"><button className="btn ghost" onClick={onClose}>Отмена</button><button className="btn gold" onClick={()=>onAdd(u)}>{I.check}Добавить</button></div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- App ---------- */
+function App(){
+  const [page,setPage]=useState("tours");
+  const [tours,setTours]=useState(seedTours());
+  const [players,setPlayers]=useState(P0);
+  const [toast,setToast]=useState(null);
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(null),2200);};
+  const NAV=[
+    {k:"tours",l:"Турниры",i:I.cup},
+    {k:"regs",l:"Записи",i:I.list},
+    {k:"results",l:"Результаты",i:I.chart},
+    {k:"players",l:"Игроки",i:I.users},
+  ];
+  return (
+    <div className="layout">
+      <aside className="side">
+        <div className="brand"><div><div className="m"><Logo size={20} color="#e7c977"/> Paradise</div><div className="tag">admin panel</div></div></div>
+        <nav className="nav">
+          {NAV.map(n=>(
+            <a key={n.k} className={page===n.k?"on":""} onClick={()=>setPage(n.k)}>{n.i}<span>{n.l}</span></a>
+          ))}
+        </nav>
+        <div className="who"><div className="av">A</div><div className="txtw"><div className="nm">Администратор</div><div className="rl">Paradise Club</div></div></div>
+      </aside>
+      <main className="main">
+        {page==="tours" && <Tournaments tours={tours} setTours={setTours} players={players}/>}
+        {page==="regs" && <Registrations tours={tours} setTours={setTours} players={players} toast={showToast}/>}
+        {page==="results" && <Results tours={tours} setTours={setTours} players={players} setPlayers={setPlayers} toast={showToast}/>}
+        {page==="players" && <Players players={players} setPlayers={setPlayers} toast={showToast}/>}
+      </main>
+      {toast && <div className="toast">{I.check}{toast}</div>}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
