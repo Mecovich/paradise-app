@@ -105,6 +105,7 @@ body{
 .banner.hh{background:linear-gradient(155deg,#0f5a42 0%,#0a3a2c 48%,#062018 100%);}
 .banner.free{background:linear-gradient(155deg,#0e5150 0%,#0a3332 48%,#051f1e 100%);}
 .banner.cls{background:linear-gradient(155deg,#14503b 0%,#0c3327 48%,#061c15 100%);}
+.banner .bimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .banner .glow{position:absolute;inset:0;background:radial-gradient(80% 60% at 84% 6%, rgba(255,158,125,.16), transparent 62%);}
 .banner .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,8,10,.1) 0%,transparent 34%,rgba(13,7,9,.6) 76%,rgba(11,6,8,.95) 100%);}
 .banner .suits{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
@@ -234,6 +235,11 @@ body{
 .ok{text-align:center;padding:18px 0 6px;}
 .ok .big{font-size:44px;color:var(--crimson);}
 .ok h3{margin-top:14px;}
+.seat-badge{display:inline-flex;align-items:stretch;margin:12px auto 6px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface2);backdrop-filter:blur(14px);}
+.seat-badge .sb-t{padding:12px 26px;text-align:center;display:flex;flex-direction:column;gap:3px;}
+.seat-badge .sb-t span{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted2);}
+.seat-badge .sb-t b{font-size:30px;font-weight:800;color:var(--gold);letter-spacing:-.5px;line-height:1;}
+.seat-badge .sb-div{width:1px;background:var(--line);}
 
 /* onboarding */
 .onb{min-height:100vh;position:relative;display:flex;flex-direction:column;background:#09070a;overflow:hidden;}
@@ -388,12 +394,21 @@ const MONTHS=["янв","фев","мар","апр","мая","июн","июл","а
 const MONTHS_F=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 const WD=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const fmtFull=(dd)=>{const x=new Date((dd||"")+"T00:00:00");return isNaN(x.getTime())?dd:`${x.getDate()} ${MONTHS_F[x.getMonth()]} ${x.getFullYear()} г.`;};
+/* случайная рассадка: свободный стол + место */
+function assignSeat(t){
+  const spt=t.seatsPerTable||9;
+  const tables=Math.max(1,Math.ceil((t.max||spt)/spt));
+  const taken=new Set((t.regs||[]).filter(r=>r.table).map(r=>r.table+"-"+r.seat));
+  const free=[];
+  for(let tb=1;tb<=tables;tb++) for(let s=1;s<=spt;s++){ if(!taken.has(tb+"-"+s)) free.push({table:tb,seat:s}); }
+  return free.length? free[Math.floor(Math.random()*free.length)] : {table:null,seat:null};
+}
 function toCard(t,i){
   const d=new Date((t.date||"")+"T00:00:00");
   const dateStr=isNaN(d.getTime())?t.date:`${d.getDate()} ${MONTHS[d.getMonth()]}, ${WD[d.getDay()]}`;
   const regs=(t.regs||[]).length;
   return {id:t.id,name:t.name,sub:"Tourney",cls:["hh","free","cls"][i%3],date:dateStr,time:t.time,
-    players:`${regs} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status};
+    players:`${regs} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status,banner:t.banner||""};
 }
 
 /* плавный счётчик чисел */
@@ -497,8 +512,7 @@ function TCard({t, live, done, onReg, onWatch}){
   return (
     <div className="tcard">
       <div className={"banner "+t.cls} style={done?{filter:"saturate(.7) brightness(.85)"}:null}>
-        <div className="glow"></div>
-        <div className="suits"><b className="a">♠</b></div>
+        {t.banner ? <img className="bimg" src={t.banner} alt=""/> : <><div className="glow"></div><div className="suits"><b className="a">♠</b></div></>}
         <div className="scrim"></div>
         <div className="top">
           {live ? <div className="pin live"><span className="lv"></span>LIVE</div>
@@ -816,7 +830,7 @@ function Profile({history=[], active=[]}){
           <div className="gcard" key={i}>
             <div>
               <div className="gn">{g.name}</div>
-              <div className="gd">{g.date}</div>
+              <div className="gd">{g.date}{g.table?` · Стол ${g.table}, место ${g.seat}`:""}</div>
             </div>
             <div className="active-pill"><span className="lv"></span>{g.note}</div>
           </div>
@@ -874,8 +888,10 @@ function ProfileSettings({onClose,onSaved}){
   );
 }
 
-function RegSheet({t,onClose}){
+function RegSheet({t,onRegister,onClose}){
   const [done,setDone]=useState(false);
+  const [seat,setSeat]=useState(null);
+  const doReg=()=>{ const s=onRegister?onRegister(t.id):null; setSeat(s); setDone(true); };
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" onClick={e=>e.stopPropagation()}>
@@ -889,13 +905,16 @@ function RegSheet({t,onClose}){
           <div className="mrow"><span className="k">Стартовый стек</span><span className="v">{t.stack}</span></div>
           <div className="mrow"><span className="k">Регистрация</span><span className="v">{t.reg}</span></div>
           <div className="mrow"><span className="k">Мест занято</span><span className="v">{t.players}</span></div>
-          <button className="btn g" onClick={()=>setDone(true)}>Записаться</button>
+          <button className="btn g" onClick={doReg}>Записаться</button>
           <button className="btn gh" onClick={onClose}>Отмена</button>
         </> : (
           <div className="ok">
             <div className="big">♥</div>
             <h3>Вы записаны</h3>
-            <div className="msub" style={{margin:"8px 0 0"}}>Ждём вас на {t.name} · {t.time}</div>
+            {seat && seat.table ? <>
+              <div className="msub" style={{margin:"10px 0 0"}}>Ваше место за столом</div>
+              <div className="seat-badge"><div className="sb-t"><span>Стол</span><b>{seat.table}</b></div><div className="sb-div"></div><div className="sb-t"><span>Место</span><b>{seat.seat}</b></div></div>
+            </> : <div className="msub" style={{margin:"8px 0 0"}}>Ждём вас на {t.name} · {t.time}</div>}
             <button className="btn g" onClick={onClose}>Готово</button>
           </div>
         )}
@@ -981,7 +1000,18 @@ function App(){
     return r?{name:t.name,date:fmtFull(t.date),place:r.place,of:(t.regs||[]).length,pts:r.pts,_d:t.date}:null;
   }).filter(Boolean).sort((a,b)=>(a._d||"").localeCompare(b._d||""));
   const myActive=tours.filter(t=>t.status!=="done" && (t.regs||[]).some(r=>r.pid===MY_ID))
-    .map(t=>({name:t.name,date:fmtFull(t.date),note:t.status==="live"?"Идёт сейчас":"Запись открыта"}));
+    .map(t=>{const r=(t.regs||[]).find(x=>x.pid===MY_ID);return {name:t.name,date:fmtFull(t.date),note:t.status==="live"?"Идёт сейчас":"Запись открыта",table:r&&r.table,seat:r&&r.seat};});
+  // регистрация на турнир с рандомной рассадкой
+  const saveTour=(x)=>store.save("tournaments",x);
+  const registerMe=(tid)=>{
+    const tt=tours.find(x=>x.id===tid); if(!tt) return null;
+    const regs=tt.regs||[];
+    const exist=regs.find(r=>r.pid===MY_ID);
+    if(exist) return {table:exist.table,seat:exist.seat};
+    const seat=assignSeat(tt);
+    saveTour({...tt,regs:[...regs,{pid:MY_ID,checked:false,table:seat.table,seat:seat.seat}]});
+    return seat;
+  };
   try{ window.__paradise={players,tours,myId:MY_ID}; }catch(e){}
   if(!agreed) return <Onboarding onAgree={()=>setAgreed(true)}/>;
   const nav=[
@@ -1012,7 +1042,7 @@ function App(){
           ))}
         </div>
       </div>
-      {reg && <RegSheet t={reg} onClose={()=>setReg(null)}/>}
+      {reg && <RegSheet t={reg} onRegister={registerMe} onClose={()=>setReg(null)}/>}
       {watch && <LiveSheet t={watch} onClose={()=>setWatch(null)}/>}
     </div>
   );
