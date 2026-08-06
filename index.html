@@ -47,8 +47,18 @@ body{
 .app{
   min-height:100vh;position:relative;overflow:hidden;
   background:
-    radial-gradient(140% 55% at 50% -10%, #124a37 0%, var(--bg) 52%, var(--bg) 100%);
+    radial-gradient(120% 48% at 50% -8%, #15563f 0%, transparent 55%),
+    radial-gradient(80% 50% at 108% 8%, rgba(231,201,119,.07), transparent 60%),
+    linear-gradient(180deg, #0a1c14 0%, var(--bg) 42%, #06110c 100%);
 }
+.app::before{content:"";position:absolute;top:-12%;left:-18%;width:65%;height:48%;z-index:0;pointer-events:none;
+  background:radial-gradient(circle, rgba(52,210,155,.2), transparent 70%);filter:blur(55px);
+  animation:orb1 20s ease-in-out infinite alternate;}
+.app::after{content:"";position:absolute;bottom:2%;right:-16%;width:62%;height:44%;z-index:0;pointer-events:none;
+  background:radial-gradient(circle, rgba(231,201,119,.12), transparent 70%);filter:blur(64px);
+  animation:orb2 26s ease-in-out infinite alternate;}
+@keyframes orb1{from{transform:translate(0,0) scale(1)}to{transform:translate(7%,5%) scale(1.08)}}
+@keyframes orb2{from{transform:translate(0,0) scale(1)}to{transform:translate(-6%,-4%) scale(1.1)}}
 .grain{position:absolute;inset:0;pointer-events:none;opacity:.5;
   background:radial-gradient(120% 80% at 50% 0%, transparent 60%, rgba(0,0,0,.5) 100%);}
 .suitgrid{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:.045;
@@ -65,6 +75,12 @@ body{
 
 .screen{position:relative;z-index:2;padding:12px 20px 118px;animation:fade .4s cubic-bezier(.2,.7,.2,1);}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* тактильные нажатия — «хочется тыкать» */
+.tcard,.tab,.htab,.lb-row,.gcard,.res-row,.scell,.mtile,.eyebrow .all{transition:transform .16s cubic-bezier(.3,.9,.3,1),box-shadow .18s ease,background .18s ease;}
+.tcard:active{transform:scale(.988);}
+.tab:active,.htab:active{transform:scale(.955);}
+.lb-row:active,.gcard:active,.res-row:active{transform:scale(.99);}
+.eyebrow .all{cursor:pointer;}.eyebrow .all:active{transform:scale(.93);}
 
 /* glassmorphism for all plates/cards */
 .plate,.pcard,.tcard,.qr,.stat,.acard,.gcard,.myrank,.tabs,.htab{
@@ -206,20 +222,24 @@ body{
 .navwrap{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;z-index:20;
   padding:0 16px calc(14px + env(safe-area-inset-bottom));pointer-events:none;
   background:linear-gradient(180deg,transparent,rgba(6,18,13,.88) 55%);}
-.nav{display:flex;pointer-events:auto;background:rgba(16,38,30,.72);backdrop-filter:blur(22px) saturate(1.3);
+.nav{position:relative;display:flex;pointer-events:auto;background:rgba(16,38,30,.72);backdrop-filter:blur(22px) saturate(1.3);
   border:1px solid var(--line2);border-radius:26px;padding:8px;
   box-shadow:0 18px 44px -14px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.06) inset;}
-.nav .it{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted2);cursor:pointer;
-  font-size:10px;font-weight:600;letter-spacing:.3px;padding:9px 0 7px;border-radius:18px;transition:.22s cubic-bezier(.3,.9,.3,1);}
-.nav .it.on{color:#fff;background:linear-gradient(165deg,rgba(52,210,155,.24),rgba(52,210,155,.05));
-  box-shadow:0 0 0 1px rgba(52,210,155,.22) inset;}
-.nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;transition:.22s;}
+.nav-ind{position:absolute;top:8px;bottom:8px;left:8px;width:calc((100% - 16px)/4);border-radius:18px;z-index:0;
+  background:linear-gradient(165deg,rgba(52,210,155,.26),rgba(52,210,155,.05));
+  box-shadow:0 0 0 1px rgba(52,210,155,.3) inset,0 6px 16px -8px rgba(52,210,155,.5);
+  transition:transform .42s cubic-bezier(.34,1.56,.5,1);}
+.nav .it{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted2);cursor:pointer;
+  font-size:10px;font-weight:600;letter-spacing:.3px;padding:9px 0 7px;border-radius:18px;transition:color .25s ease,transform .12s ease;}
+.nav .it:active{transform:scale(.9);}
+.nav .it.on{color:#fff;}
+.nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;transition:.25s;}
 .nav .it.on svg{stroke:var(--crimson);}
 
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:40;display:flex;align-items:flex-end;justify-content:center;animation:fadeo .2s ease;}
 @keyframes fadeo{from{opacity:0}to{opacity:1}}
-.sheet{width:100%;max-width:440px;background:linear-gradient(180deg,#1f0e14,#160a0f);border:1px solid var(--line);border-bottom:none;border-radius:26px 26px 0 0;padding:14px 22px 30px;animation:up .3s cubic-bezier(.2,.8,.2,1);}
+.sheet{width:100%;max-width:440px;background:linear-gradient(180deg,#12271f,#0a1810);border:1px solid var(--line);border-bottom:none;border-radius:26px 26px 0 0;padding:14px 22px 30px;animation:up .3s cubic-bezier(.2,.8,.2,1);}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 .sheet .grab{width:40px;height:4px;background:rgba(255,255,255,.16);border-radius:4px;margin:2px auto 20px;}
 .sheet h3{font-size:19px;font-weight:700;letter-spacing:-.3px;}
@@ -242,20 +262,35 @@ body{
 .seat-badge .sb-div{width:1px;background:var(--line);}
 
 /* onboarding */
-.onb{min-height:100vh;position:relative;display:flex;flex-direction:column;background:#09070a;overflow:hidden;}
+.onb{min-height:100vh;position:relative;display:flex;flex-direction:column;background:#07120d;overflow-y:auto;}
 .onb-scene{position:absolute;inset:0;z-index:1;}
 .onb-scene .table{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);width:150%;opacity:.5;}
 .onb-scene .glow{position:absolute;left:50%;top:36%;transform:translate(-50%,-50%);width:340px;height:340px;background:radial-gradient(circle,rgba(52,210,155,.22),transparent 68%);filter:blur(8px);}
 .onb-scene .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,7,10,.55) 0%,rgba(9,7,10,.15) 34%,rgba(7,5,8,.9) 72%,#09070a 100%);}
-.onb-logo{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding-bottom:40px;}
+.onb-logo{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px 0;}
 .onb-logo .mark{filter:drop-shadow(0 0 26px rgba(255,255,255,.28));}
 .onb-logo .wm{font-family:'TT Commons','Manrope',sans-serif;font-size:30px;font-weight:600;letter-spacing:8px;color:#f4ece9;text-transform:uppercase;text-indent:8px;}
 .onb-logo .tagline{font-size:10px;letter-spacing:4px;color:var(--muted2);text-transform:uppercase;margin-top:-8px;}
-.onb-bottom{position:relative;z-index:3;padding:0 20px calc(28px + env(safe-area-inset-bottom));}
+.onb-bottom{position:relative;z-index:3;margin-top:auto;padding:18px 20px calc(24px + env(safe-area-inset-bottom));}
+.policy{position:relative;z-index:3;margin:10px 20px 0;background:var(--surface2);border:1px solid var(--line);border-radius:20px;padding:16px 18px;backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.06);}
+.policy .ph{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;text-align:center;}
+.prow{display:flex;align-items:flex-start;gap:12px;padding:7px 0;}
+.prow .pi{width:34px;height:34px;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.28);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--crimson);}
+.prow .pi svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.prow .pt{font-size:13px;line-height:1.4;color:#d6d0cf;}
+.prow .pt b{color:#fff;font-weight:700;}
+.policy-more{margin-top:12px;text-align:center;color:var(--crimson);font-size:13px;font-weight:600;cursor:pointer;}
+.rules-sheet{max-height:88vh;display:flex;flex-direction:column;}
+.rules-body{overflow-y:auto;margin:14px -4px 4px;padding:0 4px;flex:1;}
+.rs-h{font-weight:700;font-size:14.5px;color:#fff;margin:16px 0 5px;}
+.rules-body p{font-size:13.5px;line-height:1.5;color:var(--muted);margin-bottom:2px;}
+.rules-body p b{color:#e8dede;font-weight:700;}
+.rs-note{margin-top:18px;font-size:12px;color:var(--muted2);font-style:italic;}
+.rules-sheet>.btn{margin-top:14px;}
 .btn-consent{width:100%;border:none;border-radius:18px;padding:19px;font-size:16px;font-weight:700;letter-spacing:.3px;color:#241606;cursor:pointer;background:linear-gradient(180deg,#ecc873,#d8b24c);box-shadow:0 12px 30px -14px rgba(216,178,76,.6);transition:filter .15s ease,transform .15s ease;}
 .btn-consent:active{transform:scale(.99);filter:brightness(.97);}
 .legal{margin-top:16px;text-align:center;font-size:12px;line-height:1.65;color:var(--muted2);}
-.legal a{color:var(--muted);text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(179,155,160,.5);}
+.legal a{color:var(--muted);text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(179,155,160,.5);cursor:pointer;}
 
 /* analytics chart */
 .acard{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px 16px 12px;margin-top:16px;}
@@ -311,6 +346,20 @@ body{
 .scell .sv.g{color:var(--gold);} .scell .sv.e{color:var(--crimson);}
 .scell .sl{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted2);margin-top:7px;}
 
+/* форма (последние результаты) */
+.formrow{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;-ms-overflow-style:none;scrollbar-width:none;}
+.formrow::-webkit-scrollbar{display:none;}
+.fchip{flex:0 0 auto;min-width:48px;text-align:center;border:1px solid var(--line);border-radius:13px;padding:9px 8px;background:rgba(255,255,255,.03);}
+.fchip .fp{font-size:16px;font-weight:800;letter-spacing:-.3px;line-height:1;}
+.fchip .fn{font-size:9.5px;color:var(--muted2);margin-top:5px;letter-spacing:.3px;}
+/* разбивка по типам */
+.tbars{display:flex;flex-direction:column;gap:12px;padding:4px 2px 2px;}
+.tbar{display:flex;align-items:center;gap:12px;}
+.tbar .tn{font-size:13px;color:#dcd6d6;min-width:104px;font-weight:500;}
+.tbar .tt{flex:1;height:8px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden;}
+.tbar .tt>div{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--crimson-soft),var(--crimson));transition:width .8s cubic-bezier(.2,.7,.2,1);}
+.tbar .tc{font-size:13px;font-weight:800;color:var(--txt);min-width:18px;text-align:right;}
+
 /* settings sheet */
 .set-head{display:flex;align-items:center;margin-bottom:20px;}
 .set-head h3{font-size:20px;font-weight:700;}
@@ -349,6 +398,12 @@ body{
 .lrow .lx{margin-left:auto;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:5px;}
 .lrow .lx.stack{color:var(--gold);} .lrow .lx.place{color:var(--muted2);font-weight:600;}
 .livescroll{max-height:50vh;overflow-y:auto;margin:0 -4px;padding:0 4px;}
+.res-row{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--line);}
+.res-row.me{background:rgba(var(--accent-rgb),.08);border-radius:12px;}
+.res-row .rp{min-width:38px;text-align:center;font-weight:800;font-size:16px;}
+.res-row .la{width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.res-row .rn{font-weight:600;font-size:14.5px;}
+.res-row .rpts{margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:800;color:var(--gold);font-size:14px;}
 </style>
 </head>
 <body>
@@ -407,7 +462,7 @@ function toCard(t,i){
   const d=new Date((t.date||"")+"T00:00:00");
   const dateStr=isNaN(d.getTime())?t.date:`${d.getDate()} ${MONTHS[d.getMonth()]}, ${WD[d.getDay()]}`;
   const regs=(t.regs||[]).length;
-  return {id:t.id,name:t.name,sub:"Tourney",cls:["hh","free","cls"][i%3],date:dateStr,time:t.time,
+  return {id:t.id,name:t.name,sub:t.type||"Tourney",cls:["hh","free","cls"][i%3],date:dateStr,time:t.time,
     players:`${regs} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status,banner:t.banner||""};
 }
 
@@ -444,10 +499,11 @@ const TG = window.Telegram && window.Telegram.WebApp;
 if(TG){
   try{
     TG.ready(); TG.expand();
-    TG.setHeaderColor && TG.setHeaderColor("#120a0d");
-    TG.setBackgroundColor && TG.setBackgroundColor("#120a0d");
+    TG.setHeaderColor && TG.setHeaderColor("#08150f");
+    TG.setBackgroundColor && TG.setBackgroundColor("#08150f");
   }catch(e){}
 }
+const haptic=(s="light")=>{try{TG&&TG.HapticFeedback&&TG.HapticFeedback.impactOccurred(s);}catch(e){}};
 const IN_TG = !!(TG && TG.initData && TG.initData.length); // реально внутри Telegram
 const TGU = TG && TG.initDataUnsafe && TG.initDataUnsafe.user; // {username, first_name, photo_url, ...}
 /* стабильный id игрока: из Telegram, иначе dev-ник для теста в браузере (?u=ник) */
@@ -459,7 +515,7 @@ const IDENTITY = {
 };
 const GOLD_AT=1500; // порог уровня Gold
 /* живой профиль игрока: id/ник/фото фиксированы, статы приходят из store (обновляются в App) */
-const ME = { id:MY_ID, name:IDENTITY.name, photo:IDENTITY.photo, handle:"", tier:"SILVER", pts:0, toGold:GOLD_AT, games:0, wins:0, rank:1 };
+const ME = { id:MY_ID, name:IDENTITY.name, photo:IDENTITY.photo, handle:"", tier:"SILVER", pts:0, toGold:GOLD_AT, games:0, wins:0, rank:1, bonus:0 };
 /* аватар текущего игрока: фото из Telegram, иначе плейсхолдер */
 const MeAva = ({me}) => (me||ME).photo
   ? <img src={(me||ME).photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
@@ -482,9 +538,13 @@ function analytics(h){
   const top10=Math.round(places.filter(p=>p<=10).length/n*100);
   const avgPts=Math.round(pts.reduce((a,b)=>a+b,0)/n);
   const bestPts=pts.length?Math.max(...pts):0;
+  const wins=places.filter(p=>p===1).length;
+  const top3=places.filter(p=>p<=3).length;
+  const itm=h.filter(x=>x.pts>0).length;
+  const itmPct=Math.round(itm/n*100);
   let streak=0;
   for(let i=h.length-1;i>=0;i--){ if(h[i].place<=10) streak++; else break; }
-  return {avg:avg.toFixed(1), best, streak, top10, avgPts, bestPts};
+  return {avg:avg.toFixed(1), best, streak, top10, avgPts, bestPts, wins, top3, itm, itmPct};
 }
 
 const Ico = {
@@ -508,7 +568,7 @@ function Meta({t}){
     </div>
   );
 }
-function TCard({t, live, done, onReg, onWatch}){
+function TCard({t, live, done, onReg, onWatch, onResults}){
   return (
     <div className="tcard">
       <div className={"banner "+t.cls} style={done?{filter:"saturate(.7) brightness(.85)"}:null}>
@@ -528,10 +588,10 @@ function TCard({t, live, done, onReg, onWatch}){
       </div>
       <Meta t={t}/>
       {live
-        ? <div className="cta watch" onClick={()=>onWatch&&onWatch(t)}><span className="lv"></span>Турнир идёт — смотреть</div>
+        ? <div className="cta watch" onClick={()=>{haptic();onWatch&&onWatch(t);}}><span className="lv"></span>Турнир идёт — смотреть</div>
         : done
-        ? <div className="cta" style={{color:"var(--muted2)",border:"1px solid var(--line)"}}>Турнир завершён</div>
-        : <div className="cta reg" onClick={()=>onReg(t)}>Записаться</div>}
+        ? <div className="cta watch" onClick={()=>{haptic();onResults&&onResults(t);}}>Смотреть результаты →</div>
+        : <div className="cta reg" onClick={()=>{haptic("medium");onReg(t);}}>Записаться</div>}
     </div>
   );
 }
@@ -545,7 +605,7 @@ function Home({live, open, onReg, onWatch, go}){
         <div className="mark">Paradise</div>
         <div className="sub">Клуб спортивного покера</div>
       </div>
-      <div className="plate" style={{cursor:"pointer"}} onClick={()=>go("rate")}>
+      <div className="plate" style={{cursor:"pointer"}} onClick={()=>{haptic();go("rate");}}>
         <div className="ava" style={{width:52,height:52}}><MeAva/></div>
         <div>
           <div className="name">{ME.name}</div>
@@ -571,7 +631,7 @@ function Home({live, open, onReg, onWatch, go}){
   );
 }
 
-function Tournaments({live, open, past, onReg, onWatch}){
+function Tournaments({live, open, past, onReg, onWatch, onResults}){
   const [tab,setTab]=useState("act");
   return (
     <div className="screen">
@@ -587,7 +647,7 @@ function Tournaments({live, open, past, onReg, onWatch}){
         {open.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} onReg={onReg}/></div>)}
         {!live.length && !open.length && <div className="hempty" style={{marginTop:30}}><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Актуальных турниров нет</div></div>}
       </> : (
-        past.length ? past.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} done onReg={onReg}/></div>) :
+        past.length ? past.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} done onReg={onReg} onResults={onResults}/></div>) :
         <div style={{textAlign:"center",color:"var(--muted2)",padding:"80px 0"}}>
           <div style={{fontSize:36,opacity:.5,color:"var(--crimson)"}}>♠</div>
           <div style={{marginTop:14,fontSize:14}}>Здесь появятся сыгранные турниры</div>
@@ -704,7 +764,14 @@ function LogoMark(){
   );
 }
 
+const PIcon={
+  chip:<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/></svg>,
+  cup:<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0z"/><path d="M7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3"/><path d="M9.5 20h5M12 15v5"/></svg>,
+  ticket:<svg viewBox="0 0 24 24"><path d="M4 8a2 2 0 012-2h12a2 2 0 012 2 2 2 0 000 4 2 2 0 010 4H6a2 2 0 01-2-2 2 2 0 000-4z"/><path d="M14 6v12"/></svg>,
+  shield:<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>,
+};
 function Onboarding({onAgree}){
+  const [rules,setRules]=useState(false);
   return (
     <div className="app">
       {!IN_TG && <div className="tg-bar">
@@ -726,14 +793,57 @@ function Onboarding({onAgree}){
           <div className="veil"></div>
         </div>
         <div className="onb-logo">
-          <Logo size={96} color="#ffffff"/>
+          <Logo size={92} color="#ffffff"/>
           <div className="wm">Paradise</div>
           <div className="tagline">Клуб спортивного покера</div>
         </div>
+
         <div className="onb-bottom">
           <button className="btn-consent" onClick={onAgree}>Согласен</button>
-          <p className="legal">Нажимая «Согласен», вы принимаете <a href="#">пользовательское соглашение и правила клуба</a>, <a href="#">соглашение на обработку персональных данных</a>, даёте <a href="#">согласие на фото и видео съёмку</a>.</p>
+          <p className="legal">Нажимая «Согласен», вы принимаете <a onClick={()=>setRules("rules")}>пользовательское соглашение и правила клуба</a>, <a onClick={()=>setRules("data")}>соглашение на обработку персональных данных</a> и даёте <a onClick={()=>setRules("media")}>согласие на фото и видеосъёмку</a>.</p>
         </div>
+      </div>
+      {rules && <RulesSheet topic={rules} onClose={()=>setRules(false)}/>}
+    </div>
+  );
+}
+
+const RULES_DOC={
+  rules:{ title:"Пользовательское соглашение и правила клуба", body:[
+    ["Что такое Paradise","Paradise — клуб спортивного покера. Мы проводим турниры формата Texas Hold'em и другие клубные игры как интеллектуальный вид спорта и досуг."],
+    ["Игра ведётся на очки и рейтинг","Все игры проводятся исключительно на турнирные очки и клубный рейтинг. Денежные ставки между участниками не проводятся, азартные игры на деньги не организуются, денежные выигрыши не начисляются и не выплачиваются."],
+    ["Взносы за участие","Бай-ин, ребай и аддон — организационные взносы за участие (аренда зала, оборудование, обслуживание, дилеры). Это не ставки и не денежный призовой фонд для выплат участникам."],
+    ["Награды","По итогам турниров участники получают очки рейтинга, бонусные баллы, призы и привилегии клуба (мерч, статусы, скидки). Награды не обмениваются на деньги."],
+    ["Рейтинг","Очки за места, нокауты и клубные бонусы формируют личный рейтинг и таблицу клуба. Клуб вправе корректировать начисления и результаты при нарушениях."],
+    ["Возраст и честная игра","Участие доступно лицам 18 лет и старше. Участники играют честно, уважают соперников и следуют указаниям организаторов. За нарушения клуб вправе дисквалифицировать участника."],
+  ]},
+  data:{ title:"Согласие на обработку персональных данных", body:[
+    ["Какие данные","Ник, идентификатор, имя пользователя и аватар Telegram, а также статистика игр и рейтинг."],
+    ["Цели обработки","Ведение рейтинга, регистрация и рассадка на турнирах, связь с участником и работа клуба."],
+    ["Хранение и передача","Данные хранятся у клуба и не передаются третьим лицам в рекламных целях."],
+    ["Ваши права","Вы можете запросить изменение или удаление своих данных, обратившись к организаторам клуба."],
+  ]},
+  media:{ title:"Согласие на фото- и видеосъёмку", body:[
+    ["Съёмка на мероприятиях","На турнирах и мероприятиях клуба может проводиться фото- и видеосъёмка с вашим участием."],
+    ["Использование материалов","Материалы могут публиковаться в информационных и рекламных каналах клуба — соцсети, сайт, мессенджеры."],
+    ["Отзыв согласия","Вы можете попросить не использовать материалы с вашим участием, обратившись к организаторам."],
+  ]},
+};
+function RulesSheet({topic,onClose}){
+  const d=RULES_DOC[topic]||RULES_DOC.rules;
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet rules-sheet" onClick={e=>e.stopPropagation()}>
+        <div className="grab"></div>
+        <h3>{d.title}</h3>
+        <div className="msub" style={{margin:"6px 0 0"}}>Paradise · клуб спортивного покера</div>
+        <div className="rules-body">
+          {d.body.map((s,i)=>(
+            <div key={i}><div className="rs-h">{i+1}. {s[0]}</div><p>{s[1]}</p></div>
+          ))}
+          <p className="rs-note">Шаблон оферты для прототипа. Перед публичным запуском согласуйте финальную редакцию с юристом.</p>
+        </div>
+        <button className="btn g" onClick={onClose}>Понятно</button>
       </div>
     </div>
   );
@@ -748,6 +858,9 @@ function Profile({history=[], active=[]}){
   const a=analytics(history);
   const past=[...history].reverse();
   const placeColor=(p)=> p<=3?"var(--gold)":p<=10?"var(--crimson)":"#e6dada";
+  const form=history.slice(-10);
+  const byType=(()=>{const m={};history.forEach(h=>{m[h.type||"—"]=(m[h.type||"—"]||0)+1;});return Object.entries(m).sort((x,y)=>y[1]-x[1]);})();
+  const maxType=Math.max(1,...byType.map(x=>x[1]));
   const ptsAnim=useCountUp(ME.pts,1100);
   const [barW,setBarW]=useState(0);
   React.useEffect(()=>{const t=setTimeout(()=>setBarW(pct),200);return ()=>clearTimeout(t);},[]);
@@ -777,9 +890,10 @@ function Profile({history=[], active=[]}){
           <div className="togold">до Gold — {ME.toGold}</div>
         </div>
         <div className="pbar"><div style={{width:barW+"%"}}></div></div>
-        <div style={{marginTop:14,display:"flex",alignItems:"center",gap:10}}>
+        <div style={{marginTop:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
           <span className="rankchip">♦ #{ME.rank} в клубе</span>
-          <span style={{color:"var(--muted)",fontSize:13}}>{ME.games} игр · {ME.wins} побед</span>
+          {ME.bonus>0 && <span className="rankchip" style={{color:"var(--gold)",background:"rgba(var(--gold-rgb),.12)",borderColor:"rgba(var(--gold-rgb),.3)"}}>★ {ME.bonus.toLocaleString("ru")} бонусов</span>}
+          <span style={{color:"var(--muted)",fontSize:13}}>{ME.games} игр</span>
         </div>
       </div>
 
@@ -792,18 +906,43 @@ function Profile({history=[], active=[]}){
              : <div className="hempty" style={{padding:"34px 0"}}><div className="s">♠</div><div style={{marginTop:10,fontSize:13.5}}>Ещё нет сыгранных турниров</div></div>}
       </div>
 
+      {has && <div className="acard">
+        <div className="ah"><div className="t"><svg viewBox="0 0 24 24"><path d="M4 12h4l2 6 4-14 2 8h4"/></svg>Форма</div><div className="n">последние {form.length}</div></div>
+        <div className="formrow">
+          {form.map((g,i)=>(
+            <div className="fchip" key={i}>
+              <div className="fp" style={{color:placeColor(g.place)}}>#{g.place}</div>
+              <div className="fn">{g.pts>0?"+"+g.pts:"0"}</div>
+            </div>
+          ))}
+        </div>
+      </div>}
+
       <div className="statcard">
         <div className="srow">
-          <div className="scell"><div className="sv">{has?a.avg:"—"}</div><div className="sl">Ср. место</div></div>
-          <div className="scell"><div className="sv g">{has?"#"+a.best:"—"}</div><div className="sl">Лучшее место</div></div>
-          <div className="scell"><div className="sv">{has?a.top10+"%":"—"}</div><div className="sl">В топ-10</div></div>
+          <div className="scell"><div className="sv g">{has?a.wins:"—"}</div><div className="sl">Побед</div></div>
+          <div className="scell"><div className="sv">{has?a.top3:"—"}</div><div className="sl">Топ-3</div></div>
+          <div className="scell"><div className="sv e">{has?a.itmPct+"%":"—"}</div><div className="sl">В деньгах</div></div>
         </div>
         <div className="srow bt">
+          <div className="scell"><div className="sv">{has?a.avg:"—"}</div><div className="sl">Ср. место</div></div>
           <div className="scell"><div className="sv">{has?a.avgPts:"—"}</div><div className="sl">Ср. очки</div></div>
           <div className="scell"><div className="sv g">{has?"+"+a.bestPts:"—"}</div><div className="sl">Лучший</div></div>
-          <div className="scell"><div className="sv e">{has&&a.streak>0?a.streak:"—"}</div><div className="sl">Стрик топ-10</div></div>
         </div>
       </div>
+
+      {byType.length>0 && <div className="acard">
+        <div className="ah"><div className="t"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="12" height="4" rx="1"/><rect x="3" y="16" width="7" height="4" rx="1"/></svg>По типам турниров</div></div>
+        <div className="tbars">
+          {byType.map(([name,cnt],i)=>(
+            <div className="tbar" key={i}>
+              <div className="tn">{name}</div>
+              <div className="tt"><div style={{width:Math.round(cnt/maxType*100)+"%"}}></div></div>
+              <div className="tc">{cnt}</div>
+            </div>
+          ))}
+        </div>
+      </div>}
 
       <div className="eyebrow" style={{marginBottom:8}}><span className="dot"></span>История игр</div>
       <div className="htabs">
@@ -853,7 +992,7 @@ function ProfileSettings({onClose,onSaved}){
     IDENTITY.name=uname; IDENTITY.photo=photo||null;
     ME.name=uname; ME.photo=photo||null;
     // обновляем запись игрока в общих данных (ник появится в админке)
-    store.save("players",{id:MY_ID, username:uname, tier:(ME.tier||"silver").toLowerCase(), pts:ME.pts||0, games:ME.games||0});
+    store.save("players",{id:MY_ID, username:uname, tier:(ME.tier||"silver").toLowerCase(), pts:ME.pts||0, games:ME.games||0, bonus:ME.bonus||0});
     onSaved(); onClose();
   };
   return (
@@ -923,6 +1062,30 @@ function RegSheet({t,onRegister,onClose}){
   );
 }
 
+function ResultsSheet({data,onClose}){
+  const medal=p=>p===1?"🥇":p===2?"🥈":p===3?"🥉":null;
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <div className="grab"></div>
+        <h3>Результаты турнира</h3>
+        <div className="msub" style={{margin:"8px 0 4px"}}>{data.name} · {data.date} · {data.total} игроков</div>
+        <div className="livescroll" style={{marginTop:12}}>
+          {data.rows.length? data.rows.map((r,i)=>(
+            <div className={"res-row"+(r.me?" me":"")} key={i}>
+              <div className="rp" style={{color:r.place<=3?"var(--gold)":"var(--muted2)"}}>{medal(r.place)||("#"+r.place)}</div>
+              <div className="la"><EmptyAva/></div>
+              <div className="rn">{r.name}{r.me&&<span style={{color:"var(--muted2)",fontWeight:400,fontSize:12}}> · вы</span>}</div>
+              <div className="rpts"><span className="coin"></span>+{r.pts}</div>
+            </div>
+          )) : <div className="hempty"><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Результаты ещё не внесены</div></div>}
+        </div>
+        <button className="btn gh" onClick={onClose} style={{marginTop:16}}>Закрыть</button>
+      </div>
+    </div>
+  );
+}
+
 function LiveSheet({t,onClose}){
   const remaining=Array.from({length:24},(_,i)=>({stack:62000-i*1950}));
   const out=Array.from({length:36},(_,i)=>({place:25+i}));
@@ -966,6 +1129,7 @@ function App(){
   const [tab,setTab]=useState("home");
   const [reg,setReg]=useState(null);
   const [watch,setWatch]=useState(null);
+  const [standings,setStandings]=useState(null);
   const [tours,setTours]=useState([]);
   const [players,setPlayers]=useState([]);
   React.useEffect(()=>{
@@ -973,7 +1137,7 @@ function App(){
       setPlayers(arr);
       // авто-регистрация текущего игрока, чтобы он появился в админке
       if(!arr.some(p=>p.id===MY_ID)){
-        store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0});
+        store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0, bonus:0});
       }
     });
     store.on("tournaments",setTours);
@@ -987,6 +1151,7 @@ function App(){
   ME.tier=(myPlayer?myPlayer.tier:"silver").toUpperCase();
   ME.pts=myPlayer?myPlayer.pts:0;
   ME.games=myPlayer?myPlayer.games:0;
+  ME.bonus=myPlayer?(myPlayer.bonus||0):0;
   ME.toGold=Math.max(0,GOLD_AT-ME.pts);
   ME.rank=myPlayer?(sortedP.findIndex(p=>p.id===MY_ID)+1):(players.length+1);
   // деривация карточек из данных store
@@ -997,7 +1162,7 @@ function App(){
   // моя история и активные записи из турниров
   const myHistory=tours.filter(t=>t.status==="done").map(t=>{
     const r=(t.results||[]).find(x=>x.pid===MY_ID);
-    return r?{name:t.name,date:fmtFull(t.date),place:r.place,of:(t.regs||[]).length,pts:r.pts,_d:t.date}:null;
+    return r?{name:t.name,type:t.type||"Tourney",date:fmtFull(t.date),place:r.place,of:(t.regs||[]).length,pts:r.pts,_d:t.date}:null;
   }).filter(Boolean).sort((a,b)=>(a._d||"").localeCompare(b._d||""));
   const myActive=tours.filter(t=>t.status!=="done" && (t.regs||[]).some(r=>r.pid===MY_ID))
     .map(t=>{const r=(t.regs||[]).find(x=>x.pid===MY_ID);return {name:t.name,date:fmtFull(t.date),note:t.status==="live"?"Идёт сейчас":"Запись открыта",table:r&&r.table,seat:r&&r.seat};});
@@ -1011,6 +1176,13 @@ function App(){
     const seat=assignSeat(tt);
     saveTour({...tt,regs:[...regs,{pid:MY_ID,checked:false,table:seat.table,seat:seat.seat}]});
     return seat;
+  };
+  const showResults=(card)=>{
+    const tt=tours.find(x=>x.id===card.id); if(!tt) return;
+    const rows=(tt.results||[]).slice().sort((a,b)=>(a.place||0)-(b.place||0)).map(r=>{
+      const p=players.find(x=>x.id===r.pid); return {place:r.place,name:p?p.username:"@username",pts:r.pts,me:r.pid===MY_ID};
+    });
+    setStandings({name:tt.name,date:card.date,total:(tt.regs||[]).length,rows});
   };
   try{ window.__paradise={players,tours,myId:MY_ID}; }catch(e){}
   if(!agreed) return <Onboarding onAgree={()=>setAgreed(true)}/>;
@@ -1030,13 +1202,14 @@ function App(){
         <span className="dots">•••</span>
       </div>}
       {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={setWatch} go={setTab}/>}
-      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={setWatch}/>}
+      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={setWatch} onResults={showResults}/>}
       {tab==="rate" && <Rating players={players}/>}
       {tab==="prof" && <Profile history={myHistory} active={myActive}/>}
       <div className="navwrap">
         <div className="nav">
+          <div className="nav-ind" style={{transform:`translateX(${nav.findIndex(n=>n.k===tab)*100}%)`}}></div>
           {nav.map(n=>(
-            <div key={n.k} className={"it "+(tab===n.k?"on":"")} onClick={()=>setTab(n.k)}>
+            <div key={n.k} className={"it "+(tab===n.k?"on":"")} onClick={()=>{haptic();setTab(n.k);}}>
               <div className="ico">{n.i}</div>{n.l}
             </div>
           ))}
@@ -1044,6 +1217,7 @@ function App(){
       </div>
       {reg && <RegSheet t={reg} onRegister={registerMe} onClose={()=>setReg(null)}/>}
       {watch && <LiveSheet t={watch} onClose={()=>setWatch(null)}/>}
+      {standings && <ResultsSheet data={standings} onClose={()=>setStandings(null)}/>}
     </div>
   );
 }

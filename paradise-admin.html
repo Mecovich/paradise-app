@@ -23,7 +23,19 @@
   --green:#57c08a; --red:#e0616d;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'TT Commons','Manrope',-apple-system,sans-serif;background:radial-gradient(130% 55% at 50% -10%, #124a37 0%, var(--bg) 52%) fixed, var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;}
+body{font-family:'TT Commons','Manrope',-apple-system,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(110% 45% at 50% -8%, #15563f 0%, transparent 55%) fixed,
+    radial-gradient(70% 45% at 106% 6%, rgba(231,201,119,.06), transparent 60%) fixed,
+    linear-gradient(180deg, #0a1c14 0%, var(--bg) 42%, #06110c 100%) fixed;}
+body::before{content:"";position:fixed;top:-12%;left:-12%;width:52%;height:50%;z-index:0;pointer-events:none;
+  background:radial-gradient(circle, rgba(52,210,155,.15), transparent 70%);filter:blur(75px);
+  animation:orb1 24s ease-in-out infinite alternate;}
+body::after{content:"";position:fixed;bottom:-10%;right:-10%;width:48%;height:46%;z-index:0;pointer-events:none;
+  background:radial-gradient(circle, rgba(231,201,119,.09), transparent 70%);filter:blur(85px);
+  animation:orb2 30s ease-in-out infinite alternate;}
+@keyframes orb1{from{transform:translate(0,0) scale(1)}to{transform:translate(6%,4%) scale(1.08)}}
+@keyframes orb2{from{transform:translate(0,0) scale(1)}to{transform:translate(-5%,-4%) scale(1.1)}}
 .suitgrid{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.04;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ctext x='12' y='32' font-family='Georgia,serif' font-size='24' fill='white'%3E%E2%99%A0%3C/text%3E%3Ctext x='52' y='70' font-family='Georgia,serif' font-size='24' fill='white'%3E%E2%99%A6%3C/text%3E%3C/svg%3E");background-size:80px 80px;}
 .layout{display:flex;min-height:100vh;position:relative;z-index:1;}
@@ -110,6 +122,11 @@ input.mini:focus{border-color:var(--gold-dim);}
 
 /* misc */
 .hint{font-size:12px;color:var(--muted2);line-height:1.4;}
+.tpl-row{display:flex;flex-wrap:wrap;gap:8px;}
+.tpl{padding:9px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+.tpl:hover{color:#fff;}
+.tpl.on{background:linear-gradient(120deg,rgba(52,210,155,.2),rgba(52,210,155,.06));color:#fff;border-color:rgba(52,210,155,.4);}
+.type-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--crimson);background:rgba(52,210,155,.12);border:1px solid rgba(52,210,155,.3);border-radius:6px;padding:2px 7px;margin-left:9px;vertical-align:middle;}
 .seat-chip{display:inline-block;font-size:12px;font-weight:600;color:var(--gold);background:rgba(227,194,116,.12);border:1px solid rgba(227,194,116,.28);border-radius:8px;padding:3px 9px;}
 .seat-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin:26px 2px 12px;}
 .seatmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
@@ -244,7 +261,27 @@ const I={
   minus:<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>,
   flag:<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>,
   out:<svg viewBox="0 0 24 24"><path d="M14 4h5v16h-5M14 12H4m0 0l4-4m-4 4l4 4"/></svg>,
+  copy:<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/></svg>,
 };
+/* ===== система рейтинга Paradise ===== */
+const PAYOUT={ reg:[10,5,3,2,1,1,0,0,0,0], china:[15,10,5,3,2,1,0,0] };
+const MYSTERY_POOL=[50,10,10,5,5,5,3,3,3,3,1,1,1,1,1,1,1,1,1,1]; // 50×1,10×2,5×3,3×4,1×10
+const TYPES={
+  "Classic":        {payout:"reg",   stack:"30 000", max:18, spt:9, ko:null},
+  "Freeroll":       {payout:"reg",   stack:"20 000", max:18, spt:9, ko:null, free:true},
+  "Bounty":         {payout:"reg",   stack:"30 000", max:18, spt:9, ko:"bounty"},
+  "Mystery Bounty": {payout:"reg",   stack:"30 000", max:18, spt:9, ko:"mystery"},
+  "China":          {payout:"china", stack:"15 000", max:8,  spt:8, ko:null},
+  "36 cards":       {payout:"reg",   stack:"40 000", max:18, spt:9, ko:null},
+};
+const pointsForPlace=(type,place)=>{const c=TYPES[type]||TYPES.Classic; return (PAYOUT[c.payout][place-1]||0);};
+const koType=(type)=>(TYPES[type]||{}).ko||null;
+const TEMPLATES=Object.keys(TYPES).map(k=>({t:k,name:k.toUpperCase(),buyin:TYPES[k].free?"Free":"1 000 ₽",stack:TYPES[k].stack,max:TYPES[k].max,spt:TYPES[k].spt}));
+const BONUSES=[
+  {k:"friend", l:"Привёл друга", pts:5000, both:true},
+  {k:"hookah", l:"Заказал кальян", pts:5000},
+  {k:"reel",   l:"Рилс (разово)", pts:10000, once:true},
+];
 
 /* ---------- seed data ---------- */
 const seedPlayers=()=>["","","","","","",""].map((_,i)=>({
@@ -279,9 +316,10 @@ function Uname({p}){return <div className="uwrap"><span className="av">{UserIcon
 /* ---------- Tournaments ---------- */
 function Tournaments({tours,saveTour,delTour,players}){
   const [edit,setEdit]=useState(null); // tournament obj or "new"
-  const blank={id:null,name:"ТВОЙ ТУРНИР",date:"2026-08-01",time:"19:00",buyin:"1 500 ₽",stack:"20 000",max:60,seatsPerTable:9,status:"reg",banner:"",regs:[],results:[]};
+  const blank={id:null,name:"CLASSIC",type:"Classic",date:"2026-08-01",time:"19:00",buyin:"1 000 ₽",stack:"30 000",max:18,seatsPerTable:9,status:"reg",banner:"",regs:[],results:[]};
   const save=(t)=>{ saveTour(t); setEdit(null); };
   const del=(id)=>delTour(id);
+  const dup=(t)=>{ const {id,...rest}=t; saveTour({...rest, name:t.name+" (копия)", status:"reg", regs:[], results:[]}); };
   return (
     <div>
       <div className="head">
@@ -295,13 +333,14 @@ function Tournaments({tours,saveTour,delTour,players}){
           <tbody>
             {tours.map(t=>(
               <tr className="rowh" key={t.id}>
-                <td className="tname">{t.banner?<img className="thumb" src={t.banner} alt=""/>:<span className="thumb-ph">♠</span>}{t.name}</td>
+                <td className="tname">{t.banner?<img className="thumb" src={t.banner} alt=""/>:<span className="thumb-ph">♠</span>}{t.name}{t.type&&<span className="type-tag">{t.type}</span>}</td>
                 <td className="muted mono">{fmtDate(t.date)}</td>
                 <td className="mono">{t.time}</td>
                 <td className="gold-t">{t.buyin}</td>
                 <td className="mono">{(t.regs||[]).length} / {t.max}</td>
                 <td><span className={"chip "+STATUS[t.status].c}><span className="d"></span>{STATUS[t.status].l}</span></td>
                 <td style={{textAlign:"right",whiteSpace:"nowrap"}}>
+                  <button className="btn ghost sm" title="Дублировать" onClick={()=>dup(t)} style={{marginRight:8}}>{I.copy}</button>
                   <button className="btn ghost sm" onClick={()=>setEdit(t)} style={{marginRight:8}}>{I.edit}</button>
                   <button className="btn danger sm" onClick={()=>del(t.id)}>{I.trash}</button>
                 </td>
@@ -325,6 +364,14 @@ function TourForm({init,onSave,onClose}){
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <h3>{init.id?"Редактировать турнир":"Новый турнир"}</h3>
         <div className="msub">Заполните параметры турнира</div>
+        <div className="field">
+          <label>Шаблон</label>
+          <div className="tpl-row">
+            {TEMPLATES.map(tp=>(
+              <button key={tp.t} className={"tpl"+(t.type===tp.t?" on":"")} onClick={()=>setT(p=>({...p,type:tp.t,name:tp.name,buyin:tp.buyin,stack:tp.stack,max:tp.max,seatsPerTable:tp.spt}))}>{tp.t}</button>
+            ))}
+          </div>
+        </div>
         <div className="field">
           <label>Баннер турнира</label>
           <div className="banner-edit">
@@ -369,7 +416,8 @@ function TourForm({init,onSave,onClose}){
 /* ---------- Registrations ---------- */
 function Registrations({tours,saveTour,players,toast}){
   const active=tours.filter(t=>t.status!=="done");
-  const [tid,setTid]=useState(active[0]?active[0].id:null);
+  const [tid,setTid]=useState("");
+  React.useEffect(()=>{ if((!tid||!active.some(x=>x.id===tid)) && active.length) setTid(active[0].id); },[tours]);
   const t=tours.find(x=>x.id===tid);
   const [addSel,setAddSel]=useState("");
   const pById=id=>players.find(p=>p.id===id);
@@ -449,52 +497,77 @@ function SeatingMap({t,players}){
 
 /* ---------- Results ---------- */
 function Results({tours,saveTour,savePlayer,players,toast}){
-  const done=tours;
-  const [tid,setTid]=useState(tours[0]?tours[0].id:null);
+  const [tid,setTid]=useState("");
+  React.useEffect(()=>{ if((!tid||!tours.some(x=>x.id===tid)) && tours.length) setTid(tours[0].id); },[tours]);
   const t=tours.find(x=>x.id===tid);
   const pById=id=>players.find(p=>p.id===id);
-  const [rows,setRows]=useState({}); // pid -> {place,pts}
+  const [rows,setRows]=useState({});
+  const [edit,setEdit]=useState(false);
   React.useEffect(()=>{
-    if(!t)return;
+    setEdit(false);
+    if(!t){setRows({});return;}
     const init={};
     (t.regs||[]).forEach(r=>{const ex=(t.results||[]).find(x=>x.pid===r.pid); init[r.pid]={place:ex?ex.place:"",pts:ex?ex.pts:""};});
     setRows(init);
-  },[tid]);
+  },[tid, t&&(t.results||[]).length, t&&(t.regs||[]).length]);
   const setCell=(pid,k,v)=>setRows(p=>({...p,[pid]:{...p[pid],[k]:v}}));
   const commit=()=>{
     const results=Object.entries(rows).filter(([_,v])=>v.place!=="").map(([pid,v])=>({pid,place:+v.place,pts:+v.pts||0}));
     saveTour({...t,status:"done",results});
-    // начисляем очки игрокам (демо: прибавка сверху)
-    results.forEach(r=>{const p=pById(r.pid); if(p) savePlayer({...p,pts:p.pts+r.pts,games:p.games+1});});
+    results.forEach(r=>{const p=pById(r.pid); if(p) savePlayer({...p,pts:(p.pts||0)+r.pts,games:(p.games||0)+1});});
+    setEdit(false);
     toast("Результаты сохранены, очки начислены");
   };
+  const standings=t?(t.results||[]).slice().sort((a,b)=>(a.place||0)-(b.place||0)):[];
+  const showEdit=t && (t.status!=="done" || edit);
+  const medal=p=>p===1?"🥇":p===2?"🥈":p===3?"🥉":"";
   return (
     <div>
-      <div className="head"><div><h1>Результаты и очки</h1><div className="sub">Впишите места и очки — рейтинг обновится</div></div>
+      <div className="head"><div><h1>Результаты и очки</h1><div className="sub">{showEdit?"Впишите места и очки — рейтинг обновится":"Итоговая таблица турнира"}</div></div>
         <div className="sp"></div>
-        {t && <button className="btn gold" onClick={commit}>{I.check}Сохранить результаты</button>}
+        {showEdit && <button className="btn gold" onClick={commit}>{I.check}Сохранить результаты</button>}
+        {t && t.status==="done" && !edit && <button className="btn ghost" onClick={()=>setEdit(true)}>{I.edit}Редактировать</button>}
       </div>
       <div className="selbar">
-        <select className="inp" style={{maxWidth:300}} value={tid||""} onChange={e=>setTid(e.target.value)}>
-          {done.map(t=><option key={t.id} value={t.id}>{t.name} · {fmtDate(t.date)} · {STATUS[t.status].l}</option>)}
+        <select className="inp" style={{maxWidth:340}} value={tid} onChange={e=>setTid(e.target.value)}>
+          {tours.length? tours.map(x=><option key={x.id} value={x.id}>{x.name} · {fmtDate(x.date)} · {STATUS[x.status].l}</option>) : <option>Нет турниров</option>}
         </select>
       </div>
-      {t ? <div className="panel">
-        <table className="tbl">
-          <thead><tr><th style={{width:90}}>Место</th><th>Игрок</th><th style={{width:120}}>Очки</th><th>Текущий рейтинг</th></tr></thead>
-          <tbody>
-            {(t.regs||[]).map(r=>{const p=pById(r.pid);const row=rows[r.pid]||{place:"",pts:""};return(
-              <tr key={r.pid}>
-                <td><input className="mini" type="number" placeholder="#" value={row.place} onChange={e=>setCell(r.pid,"place",e.target.value)}/></td>
-                <td><Uname p={p}/></td>
-                <td><input className="mini" type="number" placeholder="0" value={row.pts} onChange={e=>setCell(r.pid,"pts",e.target.value)}/></td>
-                <td className="mono muted"><span className="coin"></span>{p?p.pts.toLocaleString("ru"):"—"}</td>
-              </tr>
-            );})}
-          </tbody>
-        </table>
-        {!(t.regs||[]).length && <div className="empty">В этом турнире нет записанных игроков</div>}
-      </div> : <div className="panel"><div className="empty">Нет турниров</div></div>}
+      {!t ? <div className="panel"><div className="empty">Нет турниров</div></div> :
+        (t.status==="done" && !edit) ? (
+          <div className="panel">
+            <table className="tbl">
+              <thead><tr><th style={{width:80}}>Место</th><th>Игрок</th><th style={{width:120}}>Очки</th></tr></thead>
+              <tbody>
+                {standings.map(r=>{const p=pById(r.pid);return(
+                  <tr className="rowh" key={r.pid}>
+                    <td className="mono" style={{fontWeight:800,color:r.place<=3?"var(--gold)":"var(--muted)"}}>{medal(r.place)} #{r.place}</td>
+                    <td><Uname p={p}/></td>
+                    <td className="gold-t mono"><span className="coin"></span>+{r.pts}</td>
+                  </tr>
+                );})}
+              </tbody>
+            </table>
+            {!standings.length && <div className="empty">Результаты ещё не внесены — нажмите «Редактировать»</div>}
+          </div>
+        ) : (
+          <div className="panel">
+            <table className="tbl">
+              <thead><tr><th style={{width:90}}>Место</th><th>Игрок</th><th style={{width:120}}>Очки</th><th>Текущий рейтинг</th></tr></thead>
+              <tbody>
+                {(t.regs||[]).map(r=>{const p=pById(r.pid);const row=rows[r.pid]||{place:"",pts:""};return(
+                  <tr key={r.pid}>
+                    <td><input className="mini" type="number" placeholder="#" value={row.place} onChange={e=>setCell(r.pid,"place",e.target.value)}/></td>
+                    <td><Uname p={p}/></td>
+                    <td><input className="mini" type="number" placeholder="0" value={row.pts} onChange={e=>setCell(r.pid,"pts",e.target.value)}/></td>
+                    <td className="mono muted"><span className="coin"></span>{p?p.pts.toLocaleString("ru"):"—"}</td>
+                  </tr>
+                );})}
+              </tbody>
+            </table>
+            {!(t.regs||[]).length && <div className="empty">В этом турнире нет записанных игроков</div>}
+          </div>
+        )}
     </div>
   );
 }
@@ -503,27 +576,30 @@ function Results({tours,saveTour,savePlayer,players,toast}){
 function Players({players,savePlayer,delPlayer,toast}){
   const sorted=[...players].sort((a,b)=>b.pts-a.pts);
   const [addOpen,setAddOpen]=useState(false);
+  const [bonusOpen,setBonusOpen]=useState(false);
   const upd=(id,k,v)=>{const p=players.find(x=>x.id===id); if(p) savePlayer({...p,[k]:v});};
-  const add=(u)=>{savePlayer({username:u||"@username",tier:"silver",pts:0,games:0});setAddOpen(false);toast("Игрок добавлен");};
+  const add=(u)=>{savePlayer({username:u||"@username",tier:"silver",pts:0,games:0,bonus:0});setAddOpen(false);toast("Игрок добавлен");};
   const del=(id)=>delPlayer(id);
   return (
     <div>
-      <div className="head"><div><h1>Игроки и рейтинг</h1><div className="sub">Уровни и ручная корректировка баллов</div></div>
+      <div className="head"><div><h1>Игроки и рейтинг</h1><div className="sub">Рейтинг, бонусные баллы и уровни</div></div>
         <div className="sp"></div>
+        <button className="btn ghost" onClick={()=>setBonusOpen(true)} style={{marginRight:10}}>{I.plus}Начислить бонус</button>
         <button className="btn gold" onClick={()=>setAddOpen(true)}>{I.plus}Добавить игрока</button>
       </div>
       <div className="panel">
         <table className="tbl">
-          <thead><tr><th style={{width:60}}>#</th><th>Игрок</th><th style={{width:150}}>Очки</th><th>Игр</th><th style={{width:150}}>Уровень</th><th></th></tr></thead>
+          <thead><tr><th style={{width:50}}>#</th><th>Игрок</th><th style={{width:140}}>Рейтинг</th><th style={{width:110}}>Бонусы</th><th>Игр</th><th style={{width:130}}>Уровень</th><th></th></tr></thead>
           <tbody>
             {sorted.map((p,i)=>(
               <tr className="rowh" key={p.id}>
                 <td className="mono" style={{color:i<3?"var(--gold)":"var(--muted2)",fontWeight:700}}>{i+1}</td>
                 <td><Uname p={p}/></td>
                 <td><span className="coin"></span><input className="mini" type="number" value={p.pts} onChange={e=>upd(p.id,"pts",+e.target.value)}/></td>
+                <td className="mono" style={{color:(p.bonus||0)>0?"var(--gold)":"var(--muted2)",fontWeight:600}}>{(p.bonus||0).toLocaleString("ru")}</td>
                 <td className="mono muted">{p.games}</td>
                 <td>
-                  <select className="inp" style={{padding:"8px 10px",maxWidth:120}} value={p.tier} onChange={e=>upd(p.id,"tier",e.target.value)}>
+                  <select className="inp" style={{padding:"8px 10px",maxWidth:110}} value={p.tier} onChange={e=>upd(p.id,"tier",e.target.value)}>
                     <option value="silver">Silver</option>
                     <option value="gold">Gold</option>
                   </select>
@@ -535,6 +611,40 @@ function Players({players,savePlayer,delPlayer,toast}){
         </table>
       </div>
       {addOpen && <AddPlayer onAdd={add} onClose={()=>setAddOpen(false)}/>}
+      {bonusOpen && <BonusModal players={players} savePlayer={savePlayer} toast={toast} onClose={()=>setBonusOpen(false)}/>}
+    </div>
+  );
+}
+function BonusModal({players,savePlayer,toast,onClose}){
+  const [pid,setPid]=useState(players[0]?players[0].id:"");
+  const [pid2,setPid2]=useState("");
+  const [bk,setBk]=useState(BONUSES[0].k);
+  const b=BONUSES.find(x=>x.k===bk);
+  const p=players.find(x=>x.id===pid);
+  const apply=()=>{
+    if(!p) return;
+    if(b.once && p.reel){ toast("Рилс уже начислялся этому игроку"); return; }
+    savePlayer({...p, bonus:(p.bonus||0)+b.pts, ...(b.once?{reel:true}:{})});
+    if(b.both && pid2){ const p2=players.find(x=>x.id===pid2); if(p2) savePlayer({...p2,bonus:(p2.bonus||0)+b.pts}); }
+    toast(`Начислено +${b.pts} бонусных баллов`);
+    onClose();
+  };
+  return (
+    <div className="ov" onClick={onClose}>
+      <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
+        <h3>Начислить бонус</h3><div className="msub">Бонусные баллы (отдельно от рейтинга)</div>
+        <div className="field"><label>Игрок</label>
+          <select className="inp" value={pid} onChange={e=>setPid(e.target.value)}>{players.map(x=><option key={x.id} value={x.id}>{x.username}</option>)}</select>
+        </div>
+        <div className="field"><label>Бонус</label>
+          <select className="inp" value={bk} onChange={e=>setBk(e.target.value)}>{BONUSES.map(x=><option key={x.k} value={x.k}>{x.l} · +{x.pts}</option>)}</select>
+        </div>
+        {b.both && <div className="field"><label>Второй игрок (тоже +{b.pts})</label>
+          <select className="inp" value={pid2} onChange={e=>setPid2(e.target.value)}><option value="">— не выбран —</option>{players.filter(x=>x.id!==pid).map(x=><option key={x.id} value={x.id}>{x.username}</option>)}</select>
+        </div>}
+        {b.once && p && p.reel && <div className="hint" style={{color:"var(--red)"}}>Этому игроку рилс-бонус уже начисляли.</div>}
+        <div className="mfoot"><button className="btn ghost" onClick={onClose}>Отмена</button><button className="btn gold" onClick={apply}>{I.check}Начислить</button></div>
+      </div>
     </div>
   );
 }
@@ -557,9 +667,12 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const list=tours.filter(t=>t.status!=="done");
   const dflt=(tours.find(t=>t.status==="live")||list[0]||{}).id||"";
   const [tid,setTid]=useState(dflt);
+  React.useEffect(()=>{ if(!tid||!tours.some(x=>x.id===tid)){ if(dflt) setTid(dflt); } },[tours]);
   const t=tours.find(x=>x.id===tid)|| tours.find(x=>x.id===dflt);
   const pById=id=>players.find(p=>p.id===id);
   const nm=r=>{const p=pById(r.pid);return p?p.username:"—";};
+  const [koFor,setKoFor]=useState(null);   // pid выбывающего (для выбора того, кто выбил)
+  const [rebuyFor,setRebuyFor]=useState(null); // pid для докупки
 
   if(!tours.length) return (
     <div><div className="head"><div><h1>Отдельный турнир</h1><div className="sub">Управление активным турниром</div></div></div>
@@ -571,21 +684,46 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const outList=regs.filter(r=>r.out).sort((a,b)=>(a.place||0)-(b.place||0));
   const total=regs.length;
   const buyNum=parseInt(String((t&&t.buyin)||"").replace(/\D/g,""))||0;
-  const pool=buyNum*total;
+  const pool=buyNum*total+((t&&t.rebuyTotal)||0);
   const level=Math.max(0,Math.min(BLINDS.length-1,(t&&t.level)||0));
   const [sb,bb]=BLINDS[level];
+  const ko=t?koType(t.type):null;
 
   const setLevel=(d)=>saveTour({...t,level:Math.max(0,Math.min(BLINDS.length-1,level+d))});
   const start=()=>saveTour({...t,status:"live"});
-  const eliminate=(pid)=>{const place=inPlay.length;saveTour({...t,regs:regs.map(r=>r.pid===pid?{...r,out:true,place}:r)});};
   const revive=(pid)=>saveTour({...t,regs:regs.map(r=>r.pid===pid?{...r,out:false,place:null}:r)});
+  // выбывание: если баунти/мистери — сначала выбираем, кто выбил
+  const eliminate=(pid)=>{ if(ko){ setKoFor(pid); } else { doEliminate(pid,null); } };
+  const doEliminate=(pid,killerId)=>{
+    const place=inPlay.length;
+    const nt={...t,regs:regs.map(r=>r.pid===pid?{...r,out:true,place}:r)};
+    let award=0, msg="";
+    if(killerId && ko==="bounty"){ award=2; msg="+2 за нокаут"; }
+    if(killerId && ko==="mystery"){
+      const pool2=(t.mysteryPool&&t.mysteryPool.length)?t.mysteryPool.slice():MYSTERY_POOL.slice();
+      const idx=Math.floor(Math.random()*pool2.length);
+      award=pool2[idx]; msg="конверт +"+award; pool2.splice(idx,1); nt.mysteryPool=pool2;
+    }
+    saveTour(nt);
+    if(killerId && award){ const kp=pById(killerId); if(kp){ savePlayer({...kp,pts:(kp.pts||0)+award}); toast(nm({pid:killerId})+": "+msg); } }
+    setKoFor(null);
+  };
+  // докупки: малый ребай/большой ребай/аддон
+  const rebuy=(pid,kind)=>{
+    const base=parseInt(String(t.stack||"").replace(/\D/g,""))||0;
+    const opt={small:{chips:30000,rub:1000},big:{chips:50000,rub:1500},addon:{chips:base,rub:1000}}[kind];
+    const nt={...t, rebuyTotal:((t.rebuyTotal||0)+opt.rub),
+      regs:regs.map(r=>r.pid===pid?{...r,stack:(r.stack||base)+opt.chips}:r)};
+    saveTour(nt); setRebuyFor(null);
+    toast((kind==="addon"?"Аддон":kind==="big"?"Большой ребай":"Малый ребай")+" +"+opt.chips.toLocaleString("ru"));
+  };
   const finish=()=>{
     let rem=inPlay.length;
     const nregs=regs.map(r=> (!r.out) ? {...r,out:true,place:rem--} : r);
-    const results=nregs.filter(r=>r.place!=null).map(r=>({pid:r.pid,place:r.place,pts:Math.max(10,(total-r.place+1)*10)}));
+    const results=nregs.filter(r=>r.place!=null).map(r=>({pid:r.pid,place:r.place,pts:pointsForPlace(t.type,r.place)}));
     saveTour({...t,status:"done",regs:nregs,results});
     results.forEach(r=>{const p=pById(r.pid);if(p)savePlayer({...p,pts:(p.pts||0)+r.pts,games:(p.games||0)+1});});
-    toast("Турнир завершён, очки начислены");
+    toast("Турнир завершён, очки за места начислены");
   };
 
   return (
@@ -610,8 +748,8 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
           <div className="grad"></div>
           <div className="info">
             <div style={{flex:1}}>
-              <div className="nm">{t.name}</div>
-              <div className="meta">{fmtDate(t.date)} · {t.time} · бай-ин {t.buyin}</div>
+              <div className="nm">{t.name}{t.type&&<span className="type-tag">{t.type}</span>}</div>
+              <div className="meta">{fmtDate(t.date)} · {t.time} · бай-ин {t.buyin}{ko?` · нокаут: ${ko==="bounty"?"+2":"конверт"}`:""}</div>
             </div>
             <span className={"chip "+STATUS[t.status].c}><span className="d"></span>{STATUS[t.status].l}</span>
           </div>
@@ -637,9 +775,12 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
             {inPlay.length? inPlay.map(r=>(
               <div className="lc-row" key={r.pid}>
                 <span className="av">{UserIcon}</span>
-                <div className="nm">{nm(r)}</div>
+                <div>
+                  <div className="nm">{nm(r)}</div>
+                  {(r.table||r.stack)&&<div style={{fontSize:11,color:"var(--muted2)",marginTop:2}}>{r.table?`Стол ${r.table} · м.${r.seat}`:""}{r.stack?`  ·  стек ${r.stack.toLocaleString("ru")}`:""}</div>}
+                </div>
                 <div className="sp"></div>
-                {r.table && <span className="seat-chip" style={{marginRight:8}}>Стол {r.table} · {r.seat}</span>}
+                <button className="btn ghost sm" title="Докупка" onClick={()=>setRebuyFor(r.pid)} style={{marginRight:8}}>{I.plus}</button>
                 <button className="btn danger sm" onClick={()=>eliminate(r.pid)}>{I.out}Выбыл</button>
               </div>
             )) : <div className="lc-empty">Никого не осталось в игре</div>}
@@ -657,6 +798,34 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
           </div>
         </div>
       </> : <div className="panel"><div className="empty">Нет активных турниров. Создайте или откройте запись.</div></div>}
+
+      {koFor && <div className="ov" onClick={()=>setKoFor(null)}>
+        <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
+          <h3>Кто выбил игрока?</h3>
+          <div className="msub">Выбыл: {nm({pid:koFor})} · {t.type} {ko==="mystery"?"· тянем конверт":"· +2 очка"}</div>
+          <div style={{maxHeight:"46vh",overflow:"auto",marginTop:6}}>
+            {inPlay.filter(r=>r.pid!==koFor).map(r=>(
+              <div key={r.pid} className="lc-row" style={{cursor:"pointer"}} onClick={()=>doEliminate(koFor,r.pid)}>
+                <span className="av">{UserIcon}</span><div className="nm">{nm(r)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mfoot"><button className="btn ghost" onClick={()=>doEliminate(koFor,null)}>Без нокаута</button><button className="btn ghost" onClick={()=>setKoFor(null)}>Отмена</button></div>
+        </div>
+      </div>}
+
+      {rebuyFor && <div className="ov" onClick={()=>setRebuyFor(null)}>
+        <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
+          <h3>Докупка</h3>
+          <div className="msub">{nm({pid:rebuyFor})} · {t.name}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
+            <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"small")}><span>Малый ребай · 1000 ₽</span><span className="gold-t">+30 000</span></button>
+            <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"big")}><span>Большой ребай · 1500 ₽</span><span className="gold-t">+50 000</span></button>
+            <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"addon")}><span>Аддон · 1000 ₽</span><span className="gold-t">×2 старта</span></button>
+          </div>
+          <div className="mfoot"><button className="btn ghost" onClick={()=>setRebuyFor(null)}>Закрыть</button></div>
+        </div>
+      </div>}
     </div>
   );
 }
