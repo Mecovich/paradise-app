@@ -98,9 +98,11 @@ body{
 .eyebrow .dot.g{background:var(--gold);}
 
 /* brand */
-.brand{text-align:center;padding:20px 0 10px;display:flex;flex-direction:column;align-items:center;gap:11px;}
-.brand .mark{font-family:'TT Commons','Manrope',sans-serif;font-size:27px;font-weight:700;letter-spacing:.4px;color:#f4ece9;}
-.brand .sub{font-size:10px;letter-spacing:5px;color:var(--muted2);text-transform:uppercase;}
+.brand{text-align:center;padding:22px 0 14px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.brand .mark{font-family:'TT Commons','Manrope',sans-serif;font-size:30px;font-weight:800;letter-spacing:.5px;background:linear-gradient(180deg,#ffffff,#bfe9d6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.brand .brand-line{width:46px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--crimson),var(--gold));margin-top:2px;opacity:.9;}
+.mering{padding:2.5px;border-radius:50%;background:linear-gradient(135deg,var(--crimson),var(--gold));flex-shrink:0;box-shadow:0 5px 16px -5px rgba(52,210,155,.55);}
+.mering .ava{border:2px solid var(--bg2);display:block;}
 
 /* profile plate */
 .plate{background:var(--surface2);border:1px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);transition:transform .18s ease,background .18s ease;}
@@ -108,8 +110,10 @@ body{
 .ava{border-radius:50%;overflow:hidden;background:#f0e8e8;flex-shrink:0;}
 .ava svg{display:block;width:100%;height:100%;}
 .plate .name{font-size:18px;font-weight:700;letter-spacing:-.2px;}
-.tier{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-top:5px;}
-.tier .sw{color:var(--muted2);}
+.tier{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:1.2px;color:#cfd8d2;margin-top:7px;background:rgba(255,255,255,.06);border:1px solid var(--line2);border-radius:20px;padding:4px 11px;}
+.tier .sw{color:#c9c9d2;font-size:11px;}
+.tier.gold{color:#f0d284;background:rgba(231,201,119,.12);border-color:rgba(231,201,119,.4);}
+.tier.gold .sw{color:var(--gold);}
 .coin{width:13px;height:13px;border-radius:50%;flex-shrink:0;display:inline-block;position:relative;background:radial-gradient(circle at 50% 42%,#f1d78c 0 40%,#d8b24c 42%);box-shadow:inset 0 0 0 1.5px rgba(110,74,18,.55);}
 .coin::before{content:"";position:absolute;inset:2px;border-radius:50%;border:1.5px dotted rgba(110,74,18,.5);}
 .pts{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:700;color:var(--gold);letter-spacing:-.3px;}
@@ -140,7 +144,7 @@ body{
 .chip{background:rgba(12,7,9,.5);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:12px;padding:7px 11px;display:flex;flex-direction:column;gap:2px;}
 .chip .ck{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
 .chip .cv{font-size:13.5px;font-weight:700;color:#f2e8e8;letter-spacing:-.2px;}
-.chip.gold .cv{color:var(--gold);}
+.chip.gold .cv{color:#5fe6b8;}
 
 .tmeta{display:flex;align-items:center;padding:15px 18px 3px;gap:8px;}
 .tmeta .m{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#e6dada;}
@@ -151,7 +155,7 @@ body{
 .cta.watch{border:1px solid rgba(52,210,155,.35);color:#83f0c6;background:rgba(52,210,155,.08);}
 .cta.watch:active{filter:brightness(1.15);}
 .cta.watch .lv{width:7px;height:7px;border-radius:50%;background:#83f0c6;box-shadow:0 0 8px #83f0c6;animation:pulse 1.8s infinite;}
-.cta.reg{background:linear-gradient(180deg,#ecc873,#d8b24c);color:#241606;box-shadow:0 6px 16px -8px rgba(216,178,76,.55);}
+.cta.reg{background:linear-gradient(180deg,#41dda7,#20b888);color:#04211a;box-shadow:0 8px 20px -8px rgba(52,210,155,.6);}
 .cta.reg:active{filter:brightness(.97);}
 
 /* tabs */
@@ -400,6 +404,9 @@ body{
 .livescroll{max-height:50vh;overflow-y:auto;margin:0 -4px;padding:0 4px;}
 .res-row{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--line);}
 .res-row.me{background:rgba(var(--accent-rgb),.08);border-radius:12px;}
+.res-row.top1{background:linear-gradient(90deg,rgba(var(--gold-rgb),.14),transparent);border-radius:12px;}
+.res-row .la,.lrow .la{border:1px solid var(--line);}
+.lrow.me{background:rgba(var(--accent-rgb),.08);border-radius:12px;}
 .res-row .rp{min-width:38px;text-align:center;font-weight:800;font-size:16px;}
 .res-row .la{width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0;}
 .res-row .rn{font-weight:600;font-size:14.5px;}
@@ -449,6 +456,7 @@ const MONTHS=["янв","фев","мар","апр","мая","июн","июл","а
 const MONTHS_F=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 const WD=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const fmtFull=(dd)=>{const x=new Date((dd||"")+"T00:00:00");return isNaN(x.getTime())?dd:`${x.getDate()} ${MONTHS_F[x.getMonth()]} ${x.getFullYear()} г.`;};
+const BLINDS_APP=[[100,200],[150,300],[200,400],[300,600],[400,800],[500,1000],[700,1400],[1000,2000],[1500,3000],[2000,4000],[3000,6000],[5000,10000]];
 /* случайная рассадка: свободный стол + место */
 function assignSeat(t){
   const spt=t.seatsPerTable||9;
@@ -493,6 +501,8 @@ const EmptyAva = () => (
   <path d="M13 50 C13 40.5 20.5 35.5 28 35.5 C35.5 35.5 43 40.5 43 50 Z" fill="rgba(255,255,255,.18)"/></svg>
 );
 const Photo = () => <EmptyAva/>;
+/* аватар игрока: фото (из Telegram) или плейсхолдер */
+const Ava = ({p}) => (p&&p.photo) ? <img src={p.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/> : <EmptyAva/>;
 
 /* --- Telegram Mini App интеграция --- */
 const TG = window.Telegram && window.Telegram.WebApp;
@@ -579,7 +589,7 @@ function TCard({t, live, done, onReg, onWatch, onResults}){
                 : done ? <div className="pin" style={{background:"rgba(255,255,255,.08)",color:"var(--muted)"}}>Завершён</div>
                 : <div className="pin rec"><span className="lv"></span>Запись открыта</div>}
         </div>
-        <div className="ttl"><div className="n">{t.name}</div><div className="s">{t.sub}</div></div>
+        {!t.banner && <div className="ttl"><div className="n">{t.name}</div><div className="s">{t.sub}</div></div>}
         <div className="chips">
           <div className="chip gold"><span className="ck">Бай-ин</span><span className="cv">{t.buyin}</span></div>
           <div className="chip"><span className="ck">Стек</span><span className="cv">{t.stack}</span></div>
@@ -601,15 +611,15 @@ function Home({live, open, onReg, onWatch, go}){
   return (
     <div className="screen">
       <div className="brand">
-        <Logo size={50} color="#eef5f1"/>
+        <Logo size={54} color="#eef5f1"/>
         <div className="mark">Paradise</div>
-        <div className="sub">Клуб спортивного покера</div>
+        <div className="brand-line"></div>
       </div>
       <div className="plate" style={{cursor:"pointer"}} onClick={()=>{haptic();go("rate");}}>
-        <div className="ava" style={{width:52,height:52}}><MeAva/></div>
+        <div className="mering"><div className="ava" style={{width:52,height:52}}><MeAva/></div></div>
         <div>
           <div className="name">{ME.name}</div>
-          <div className="tier"><span className="sw">♦</span>{ME.tier}</div>
+          <div className={"tier"+(ME.tier==="GOLD"?" gold":"")}><span className="sw">♦</span>{ME.tier}</div>
         </div>
         <div style={{flex:1}}></div>
         <div className="pts"><span className="coin"></span>{homePts}</div>
@@ -684,19 +694,19 @@ function Rating({players}){
       {top.length>=3 && <div className="podium">
         <div className="pod p2">
           <div className="rank">02</div>
-          <div className="ring"><div className="pava" style={{width:66,height:66}}><EmptyAva/></div></div>
+          <div className="ring"><div className="pava" style={{width:66,height:66}}><Ava p={p2}/></div></div>
           <div className="pn">{p2.username}</div>
           <div className="pp"><span className="coin"></span>{p2.pts.toLocaleString("ru")}</div>
         </div>
         <div className="pod p1">
           <div className="rank" style={{color:"var(--gold)"}}>01</div>
-          <div className="ring"><div className="pava" style={{width:88,height:88}}><EmptyAva/></div></div>
+          <div className="ring"><div className="pava" style={{width:88,height:88}}><Ava p={p1}/></div></div>
           <div className="pn">{p1.username}</div>
           <div className="pp"><span className="coin"></span>{p1.pts.toLocaleString("ru")}</div>
         </div>
         <div className="pod p3">
           <div className="rank">03</div>
-          <div className="ring"><div className="pava" style={{width:62,height:62}}><EmptyAva/></div></div>
+          <div className="ring"><div className="pava" style={{width:62,height:62}}><Ava p={p3}/></div></div>
           <div className="pn">{p3.username}</div>
           <div className="pp"><span className="coin"></span>{p3.pts.toLocaleString("ru")}</div>
         </div>
@@ -706,7 +716,7 @@ function Rating({players}){
         {top.slice(3).map((u,i)=>(
           <div className="lb-row" key={u.id}>
             <div className="rk">{i+4}</div>
-            <div className="lava"><EmptyAva/></div>
+            <div className="lava"><Ava p={u}/></div>
             <div className="lname">{u.username}</div>
             <div className="lp"><span className="coin"></span>{u.pts.toLocaleString("ru")}</div>
           </div>
@@ -877,11 +887,11 @@ function Profile({history=[], active=[]}){
       <div className="pcard">
         <div className="bg-suit">♠</div>
         <div className="top">
-          <div className="ava" style={{width:70,height:70}}><MeAva/></div>
+          <div className="mering"><div className="ava" style={{width:70,height:70}}><MeAva/></div></div>
           <div>
             <div className="uname">{ME.name}</div>
             {ME.handle && <div className="handle">{ME.handle}</div>}
-            <div className="tier" style={{marginTop:7}}><span className="sw">♦</span>{ME.tier}</div>
+            <div className={"tier"+(ME.tier==="GOLD"?" gold":"")} style={{marginTop:8}}><span className="sw">♦</span>{ME.tier}</div>
           </div>
         </div>
         <div className="ptsrow">
@@ -992,7 +1002,7 @@ function ProfileSettings({onClose,onSaved}){
     IDENTITY.name=uname; IDENTITY.photo=photo||null;
     ME.name=uname; ME.photo=photo||null;
     // обновляем запись игрока в общих данных (ник появится в админке)
-    store.save("players",{id:MY_ID, username:uname, tier:(ME.tier||"silver").toLowerCase(), pts:ME.pts||0, games:ME.games||0, bonus:ME.bonus||0});
+    store.save("players",{id:MY_ID, username:uname, tier:(ME.tier||"silver").toLowerCase(), pts:ME.pts||0, games:ME.games||0, bonus:ME.bonus||0, photo:ME.photo||null});
     onSaved(); onClose();
   };
   return (
@@ -1072,9 +1082,9 @@ function ResultsSheet({data,onClose}){
         <div className="msub" style={{margin:"8px 0 4px"}}>{data.name} · {data.date} · {data.total} игроков</div>
         <div className="livescroll" style={{marginTop:12}}>
           {data.rows.length? data.rows.map((r,i)=>(
-            <div className={"res-row"+(r.me?" me":"")} key={i}>
+            <div className={"res-row"+(r.me?" me":"")+(r.place===1?" top1":"")} key={i}>
               <div className="rp" style={{color:r.place<=3?"var(--gold)":"var(--muted2)"}}>{medal(r.place)||("#"+r.place)}</div>
-              <div className="la"><EmptyAva/></div>
+              <div className="la"><Ava p={r}/></div>
               <div className="rn">{r.name}{r.me&&<span style={{color:"var(--muted2)",fontWeight:400,fontSize:12}}> · вы</span>}</div>
               <div className="rpts"><span className="coin"></span>+{r.pts}</div>
             </div>
@@ -1086,34 +1096,33 @@ function ResultsSheet({data,onClose}){
   );
 }
 
-function LiveSheet({t,onClose}){
-  const remaining=Array.from({length:24},(_,i)=>({stack:62000-i*1950}));
-  const out=Array.from({length:36},(_,i)=>({place:25+i}));
+function LiveSheet({data,onClose}){
+  const [sb,bb]=data.blinds||[300,600];
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" onClick={e=>e.stopPropagation()}>
         <div className="grab"></div>
-        <div className="live-hd"><span className="lv"></span><h3>{t.name}</h3></div>
-        <div className="msub" style={{margin:"8px 0 0"}}>Идёт сейчас · блайнды 300 / 600</div>
+        <div className="live-hd"><span className="lv"></span><h3>{data.name}</h3></div>
+        <div className="msub" style={{margin:"8px 0 0"}}>Идёт сейчас · блайнды {sb} / {bb}</div>
         <div className="live-sub">
-          <div className="ls"><div className="n e">24</div><div className="c">В игре</div></div>
-          <div className="ls"><div className="n m">36</div><div className="c">Выбыли</div></div>
-          <div className="ls"><div className="n">60</div><div className="c">Всего</div></div>
+          <div className="ls"><div className="n e">{data.inPlay.length}</div><div className="c">В игре</div></div>
+          <div className="ls"><div className="n m">{data.out.length}</div><div className="c">Выбыли</div></div>
+          <div className="ls"><div className="n">{data.total}</div><div className="c">Всего</div></div>
         </div>
         <div className="livescroll">
-          <div className="lgroup-h"><span className="d in"></span>В игре · 24</div>
-          {remaining.map((p,i)=>(
-            <div className="lrow" key={"r"+i}>
-              <div className="la"><EmptyAva/></div>
-              <div className="ln">@username</div>
+          <div className="lgroup-h"><span className="d in"></span>В игре · {data.inPlay.length}</div>
+          {data.inPlay.length? data.inPlay.map((p,i)=>(
+            <div className={"lrow"+(p.me?" me":"")} key={"r"+i}>
+              <div className="la"><Ava p={p}/></div>
+              <div className="ln">{p.name}{p.me&&<span style={{color:"var(--muted2)",fontWeight:400,fontSize:12}}> · вы</span>}</div>
               <div className="lx stack"><span className="coin"></span>{p.stack.toLocaleString("ru")}</div>
             </div>
-          ))}
-          <div className="lgroup-h"><span className="d out"></span>Выбыли · 36</div>
-          {out.map((p,i)=>(
+          )) : <div className="hempty" style={{padding:"24px 0"}}><div style={{fontSize:14}}>Пока никто не в игре</div></div>}
+          {data.out.length>0 && <div className="lgroup-h"><span className="d out"></span>Выбыли · {data.out.length}</div>}
+          {data.out.map((p,i)=>(
             <div className="lrow out" key={"o"+i}>
-              <div className="la"><EmptyAva/></div>
-              <div className="ln">@username</div>
+              <div className="la"><Ava p={p}/></div>
+              <div className="ln">{p.name}</div>
               <div className="lx place">#{p.place} место</div>
             </div>
           ))}
@@ -1137,7 +1146,7 @@ function App(){
       setPlayers(arr);
       // авто-регистрация текущего игрока, чтобы он появился в админке
       if(!arr.some(p=>p.id===MY_ID)){
-        store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0, bonus:0});
+        store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0, bonus:0, photo:IDENTITY.photo||null});
       }
     });
     store.on("tournaments",setTours);
@@ -1180,9 +1189,18 @@ function App(){
   const showResults=(card)=>{
     const tt=tours.find(x=>x.id===card.id); if(!tt) return;
     const rows=(tt.results||[]).slice().sort((a,b)=>(a.place||0)-(b.place||0)).map(r=>{
-      const p=players.find(x=>x.id===r.pid); return {place:r.place,name:p?p.username:"@username",pts:r.pts,me:r.pid===MY_ID};
+      const p=players.find(x=>x.id===r.pid); return {place:r.place,name:p?p.username:"@username",photo:p?p.photo:null,pts:r.pts,me:r.pid===MY_ID};
     });
     setStandings({name:tt.name,date:card.date,total:(tt.regs||[]).length,rows});
+  };
+  const showWatch=(card)=>{
+    const tt=tours.find(x=>x.id===card.id); if(!tt) return;
+    const base=parseInt(String(tt.stack||"").replace(/\D/g,""))||0;
+    const regs=tt.regs||[]; const pById=id=>players.find(x=>x.id===id);
+    const inPlay=regs.filter(r=>!r.out).map(r=>{const p=pById(r.pid);return {name:p?p.username:"@username",photo:p?p.photo:null,stack:r.stack||base,me:r.pid===MY_ID};}).sort((a,b)=>b.stack-a.stack);
+    const out=regs.filter(r=>r.out).sort((a,b)=>(a.place||0)-(b.place||0)).map(r=>{const p=pById(r.pid);return {name:p?p.username:"@username",photo:p?p.photo:null,place:r.place};});
+    const lvl=Math.max(0,Math.min(BLINDS_APP.length-1,tt.level||0));
+    setWatch({name:tt.name,total:regs.length,inPlay,out,blinds:BLINDS_APP[lvl]});
   };
   try{ window.__paradise={players,tours,myId:MY_ID}; }catch(e){}
   if(!agreed) return <Onboarding onAgree={()=>setAgreed(true)}/>;
@@ -1201,8 +1219,8 @@ function App(){
         <span className="pill"><span className="suit"><Logo size={12} color="#34d29b"/></span> Paradise · Покерный к...</span>
         <span className="dots">•••</span>
       </div>}
-      {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={setWatch} go={setTab}/>}
-      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={setWatch} onResults={showResults}/>}
+      {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={showWatch} go={setTab}/>}
+      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={showWatch} onResults={showResults}/>}
       {tab==="rate" && <Rating players={players}/>}
       {tab==="prof" && <Profile history={myHistory} active={myActive}/>}
       <div className="navwrap">
@@ -1216,7 +1234,7 @@ function App(){
         </div>
       </div>
       {reg && <RegSheet t={reg} onRegister={registerMe} onClose={()=>setReg(null)}/>}
-      {watch && <LiveSheet t={watch} onClose={()=>setWatch(null)}/>}
+      {watch && <LiveSheet data={watch} onClose={()=>setWatch(null)}/>}
       {standings && <ResultsSheet data={standings} onClose={()=>setStandings(null)}/>}
     </div>
   );

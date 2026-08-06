@@ -177,6 +177,13 @@ input.mini:focus{border-color:var(--gold-dim);}
 .lc-row.gone .nm{color:var(--muted);}
 .lc-row .sp{flex:1;}
 .lc-empty{padding:24px;text-align:center;color:var(--muted2);font-size:13px;border:1px dashed var(--line2);border-radius:14px;}
+.bill-row{display:flex;align-items:center;justify-content:space-between;padding:11px 4px;border-bottom:1px solid var(--line);}
+.bill-row .nm{font-weight:600;font-size:14.5px;}
+.bill-sub{font-size:12px;color:var(--muted2);margin-top:2px;}
+.bill-tot{font-weight:700;color:var(--gold);font-size:14.5px;white-space:nowrap;}
+.bill-total{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:15px 16px;border-radius:14px;background:rgba(231,201,119,.1);border:1px solid rgba(231,201,119,.28);}
+.bill-total span{color:var(--muted);font-weight:600;}
+.bill-total b{font-size:20px;color:var(--gold);letter-spacing:-.3px;}
 .empty{padding:60px;text-align:center;color:var(--muted2);}
 .empty .s{font-size:40px;color:var(--crimson);opacity:.5;}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:3px;}
@@ -673,6 +680,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const nm=r=>{const p=pById(r.pid);return p?p.username:"—";};
   const [koFor,setKoFor]=useState(null);   // pid выбывающего (для выбора того, кто выбил)
   const [rebuyFor,setRebuyFor]=useState(null); // pid для докупки
+  const [billOpen,setBillOpen]=useState(false);
 
   if(!tours.length) return (
     <div><div className="head"><div><h1>Отдельный турнир</h1><div className="sub">Управление активным турниром</div></div></div>
@@ -713,7 +721,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
     const base=parseInt(String(t.stack||"").replace(/\D/g,""))||0;
     const opt={small:{chips:30000,rub:1000},big:{chips:50000,rub:1500},addon:{chips:base,rub:1000}}[kind];
     const nt={...t, rebuyTotal:((t.rebuyTotal||0)+opt.rub),
-      regs:regs.map(r=>r.pid===pid?{...r,stack:(r.stack||base)+opt.chips}:r)};
+      regs:regs.map(r=>r.pid===pid?{...r,stack:(r.stack||base)+opt.chips,rebuys:(r.rebuys||0)+1,spent:(r.spent||0)+opt.rub}:r)};
     saveTour(nt); setRebuyFor(null);
     toast((kind==="addon"?"Аддон":kind==="big"?"Большой ребай":"Малый ребай")+" +"+opt.chips.toLocaleString("ru"));
   };
@@ -731,6 +739,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
       <div className="head">
         <div><h1>Отдельный турнир</h1><div className="sub">Ведение активного турнира — кто в игре и кто выбыл</div></div>
         <div className="sp"></div>
+        {t && total>0 && <button className="btn ghost" onClick={()=>setBillOpen(true)} style={{marginRight:10}}>{I.list}Счёт</button>}
         {t && t.status==="reg" && <button className="btn gold" onClick={start}>{I.live}Начать турнир</button>}
         {t && t.status==="live" && inPlay.length<=1 && <button className="btn gold" onClick={finish}>{I.flag}Завершить</button>}
       </div>
@@ -777,7 +786,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
                 <span className="av">{UserIcon}</span>
                 <div>
                   <div className="nm">{nm(r)}</div>
-                  {(r.table||r.stack)&&<div style={{fontSize:11,color:"var(--muted2)",marginTop:2}}>{r.table?`Стол ${r.table} · м.${r.seat}`:""}{r.stack?`  ·  стек ${r.stack.toLocaleString("ru")}`:""}</div>}
+                  {(r.table||r.stack||r.rebuys)&&<div style={{fontSize:11,color:"var(--muted2)",marginTop:2}}>{r.table?`Стол ${r.table} · м.${r.seat}`:""}{r.stack?`  ·  стек ${r.stack.toLocaleString("ru")}`:""}{r.rebuys?`  ·  ребаи ×${r.rebuys}`:""}</div>}
                 </div>
                 <div className="sp"></div>
                 <button className="btn ghost sm" title="Докупка" onClick={()=>setRebuyFor(r.pid)} style={{marginRight:8}}>{I.plus}</button>
@@ -824,6 +833,23 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
             <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"addon")}><span>Аддон · 1000 ₽</span><span className="gold-t">×2 старта</span></button>
           </div>
           <div className="mfoot"><button className="btn ghost" onClick={()=>setRebuyFor(null)}>Закрыть</button></div>
+        </div>
+      </div>}
+
+      {billOpen && <div className="ov" onClick={()=>setBillOpen(false)}>
+        <div className="modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
+          <h3>Счёт турнира</h3>
+          <div className="msub">{t.name} · участников {total}</div>
+          <div style={{maxHeight:"52vh",overflow:"auto",margin:"10px -4px 0",padding:"0 4px"}}>
+            {regs.length? regs.map(r=>{const p=pById(r.pid);const rb=r.spent||0;const tot=buyNum+rb;return(
+              <div key={r.pid} className="bill-row">
+                <div><div className="nm">{p?p.username:"—"}</div><div className="bill-sub">вход {buyNum.toLocaleString("ru")} ₽{r.rebuys?` · ребаи ×${r.rebuys} = ${rb.toLocaleString("ru")} ₽`:""}</div></div>
+                <div className="bill-tot">{tot.toLocaleString("ru")} ₽</div>
+              </div>
+            );}) : <div className="empty">Нет участников</div>}
+          </div>
+          <div className="bill-total"><span>Итого к оплате</span><b>{(buyNum*total+regs.reduce((s,r)=>s+(r.spent||0),0)).toLocaleString("ru")} ₽</b></div>
+          <div className="mfoot"><button className="btn ghost" onClick={()=>setBillOpen(false)}>Закрыть</button></div>
         </div>
       </div>}
     </div>
