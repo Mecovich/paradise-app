@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
@@ -211,6 +212,8 @@ input.mini:focus{border-color:var(--gold-dim);}
 <body>
 <div class="suitgrid"></div>
 <div id="root"></div>
+<script src="paradise-core.js"></script>
+
 <script type="text/babel">
 const {useState} = React;
 const uid=()=>Math.random().toString(36).slice(2,9);
@@ -231,21 +234,76 @@ const _local={tournaments:{},players:{},subs:{tournaments:[],players:[]}};
 const _arr=(c)=>Object.entries(_local[c]).map(([id,v])=>({id,...v}));
 const _emit=(c)=>_local.subs[c].forEach(cb=>cb(_arr(c)));
 const _clean=(o)=>JSON.parse(JSON.stringify(o));
+
+/* regs в базе лежат объектом {pid: запись}; интерфейсу отдаём массив */
+const _normTour=(t)=>({...t, regs: PClub.regsToArray(t.regs),
+                       results: t.results ? (Array.isArray(t.results)?t.results.filter(Boolean):Object.values(t.results)) : []});
+
 const store={
   on(c,cb){
-    if(FB_ON){ _db.ref(c).on("value",s=>{const v=s.val()||{};cb(Object.entries(v).map(([id,x])=>({id,...x})));}); }
-    else { _local.subs[c].push(cb); cb(_arr(c)); }
+    const wrap = c==="tournaments" ? (arr)=>cb(arr.map(_normTour)) : cb;
+    if(FB_ON){ _db.ref(c).on("value",
+      s=>{const v=s.val()||{};wrap(Object.entries(v).map(([id,x])=>({id,...x})));},
+      e=>console.error("Нет доступа к "+c+":",e.message)); }
+    else { _local.subs[c].push((arr)=>wrap(arr)); wrap(_arr(c)); }
   },
+
+  /* Турнир сохраняем БЕЗ regs: список записавшихся живёт отдельными узлами,
+     иначе сохранение турнира затирало бы тех, кто записался пару секунд назад. */
   save(c,item){
     const id=item.id||(FB_ON?_db.ref(c).push().key:uid());
-    const data=_clean({...item,id});
-    if(FB_ON) _db.ref(c+"/"+id).set(data); else { _local[c][id]=data; _emit(c); }
+    let data=_clean({...item,id});
+    if(c==="tournaments"){
+      const {regs,...rest}=data;
+      data=rest;
+      if(FB_ON){ _db.ref("tournaments/"+id).update(data).catch(e=>console.error("save:",e.message)); return id; }
+      _local[c][id]={..._local[c][id],...data}; _emit(c); return id;
+    }
+    if(FB_ON) _db.ref(c+"/"+id).update(data).catch(e=>console.error("save:",e.message));
+    else { _local[c][id]={..._local[c][id],...data}; _emit(c); }
     return id;
   },
+
   del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove(); else { delete _local[c][id]; _emit(c); } },
+
+  /* ---------- точечная работа с записями на турнир ---------- */
+
+  _regs(tid){
+    const t=_local.tournaments[tid];
+    if(t && Array.isArray(t.regs)) t.regs=Object.fromEntries(t.regs.filter(Boolean).map(r=>[r.pid,r]));
+    if(t && !t.regs) t.regs={};
+    return t?t.regs:null;
+  },
+  updReg(tid,pid,patch){
+    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).update(_clean(patch)).catch(e=>console.error("updReg:",e.message));
+    const r=this._regs(tid); if(r&&r[pid]) Object.assign(r[pid],patch); _emit("tournaments"); return Promise.resolve();
+  },
+  setReg(tid,pid,rec){
+    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).set(_clean({...rec,pid})).catch(e=>console.error("setReg:",e.message));
+    const r=this._regs(tid); if(r) r[pid]={...rec,pid}; _emit("tournaments"); return Promise.resolve();
+  },
+  delReg(tid,pid){
+    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).remove();
+    const r=this._regs(tid); if(r) delete r[pid]; _emit("tournaments"); return Promise.resolve();
+  },
+  /** Массовое обновление записей одним запросом: {pid: patch|null} */
+  updRegs(tid,map){
+    if(FB_ON){
+      const upd={};
+      Object.entries(map).forEach(([pid,patch])=>{
+        if(patch===null){ upd[pid]=null; return; }
+        Object.entries(_clean(patch)).forEach(([k,v])=>{ upd[pid+"/"+k]=v; });
+      });
+      return _db.ref("tournaments/"+tid+"/regs").update(upd).catch(e=>console.error("updRegs:",e.message));
+    }
+    const r=this._regs(tid);
+    if(r) Object.entries(map).forEach(([pid,patch])=>{ if(patch===null) delete r[pid]; else if(r[pid]) Object.assign(r[pid],patch); });
+    _emit("tournaments"); return Promise.resolve();
+  },
+
   seed(c,items){
-    if(FB_ON){ _db.ref(c).once("value",s=>{ if(!s.exists()){ const m={}; items.forEach(it=>{const id=it.id||_db.ref(c).push().key; m[id]=_clean({...it,id});}); _db.ref(c).set(m);} }); }
-    else if(!Object.keys(_local[c]).length){ items.forEach(it=>{const id=it.id||uid(); _local[c][id]=_clean({...it,id});}); _emit(c); }
+    if(FB_ON) return; /* демо-данные в боевую базу не заливаем */
+    if(!Object.keys(_local[c]).length){ items.forEach(it=>{const id=it.id||uid(); _local[c][id]=_clean({...it,id});}); _emit(c); }
   }
 };
 const Logo=({size=22,color="#fff"})=>(
@@ -308,15 +366,8 @@ const seedTours=()=>[
 
 const STATUS={reg:{l:"Запись",c:"reg"}, live:{l:"Идёт",c:"live"}, done:{l:"Завершён",c:"done"}};
 const fmtDate=d=>{const[y,m,dd]=d.split("-");const mm=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][+m-1];return `${+dd} ${mm} ${y}`;};
-/* случайная рассадка: свободный стол + место */
-function assignSeat(t){
-  const spt=t.seatsPerTable||9;
-  const tables=Math.max(1,Math.ceil((t.max||spt)/spt));
-  const taken=new Set((t.regs||[]).filter(r=>r.table).map(r=>r.table+"-"+r.seat));
-  const free=[];
-  for(let tb=1;tb<=tables;tb++) for(let s=1;s<=spt;s++){ if(!taken.has(tb+"-"+s)) free.push({table:tb,seat:s}); }
-  return free.length? free[Math.floor(Math.random()*free.length)] : {table:null,seat:null};
-}
+/* рассадка живёт в paradise-core.js — общая с приложением игрока и покрыта тестами */
+const assignSeat=(t)=>PClub.assignSeat(t);
 
 function Uname({p}){return <div className="uwrap"><span className="av">{UserIcon}</span><span>{p?p.username:"—"}</span></div>;}
 
@@ -344,7 +395,9 @@ function Tournaments({tours,saveTour,delTour,players}){
                 <td className="muted mono">{fmtDate(t.date)}</td>
                 <td className="mono">{t.time}</td>
                 <td className="gold-t">{t.buyin}</td>
-                <td className="mono">{(t.regs||[]).length} / {t.max}</td>
+                <td className="mono">{PClub.seatedCount(t.regs||[])} / {t.max}
+                  {PClub.waitingList(t.regs||[]).length>0 &&
+                    <span className="muted"> +{PClub.waitingList(t.regs||[]).length} в очереди</span>}</td>
                 <td><span className={"chip "+STATUS[t.status].c}><span className="d"></span>{STATUS[t.status].l}</span></td>
                 <td style={{textAlign:"right",whiteSpace:"nowrap"}}>
                   <button className="btn ghost sm" title="Дублировать" onClick={()=>dup(t)} style={{marginRight:8}}>{I.copy}</button>
@@ -428,10 +481,26 @@ function Registrations({tours,saveTour,players,toast}){
   const t=tours.find(x=>x.id===tid);
   const [addSel,setAddSel]=useState("");
   const pById=id=>players.find(p=>p.id===id);
-  const upd=(fn)=>{ if(t) saveTour(fn({...t,regs:t.regs||[]})); };
-  const toggle=(pid)=>upd(t=>({...t,regs:t.regs.map(r=>r.pid===pid?{...r,checked:!r.checked}:r)}));
-  const remove=(pid)=>upd(t=>({...t,regs:t.regs.filter(r=>r.pid!==pid)}));
-  const add=()=>{ if(!addSel)return; const seat=assignSeat(t); upd(t=>({...t,regs:[...t.regs,{pid:addSel,checked:false,table:seat.table,seat:seat.seat}]})); setAddSel(""); toast(seat.table?`Игрок посажен · Стол ${seat.table}, место ${seat.seat}`:"Игрок добавлен"); };
+  /* Меняем только конкретную запись, а не турнир целиком:
+     иначе сохранение затирало бы тех, кто записался в этот же момент. */
+  const toggle=(pid)=>{
+    const r=(t.regs||[]).find(x=>x.pid===pid);
+    store.updReg(t.id,pid,{checked:!(r&&r.checked)});
+  };
+  const remove=(pid)=>store.delReg(t.id,pid);
+  const add=()=>{
+    if(!addSel||!t) return;
+    const arr=PClub.regsToArray(t.regs);
+    const full=PClub.seatedCount(arr)>=(+t.max||0);
+    const seat=full?{table:null,seat:null}:PClub.assignSeat(t,arr);
+    const rec={pid:addSel,checked:false,status:full?"wait":"reg",ts:Date.now()};
+    if(seat.table){ rec.table=seat.table; rec.seat=seat.seat; }
+    store.setReg(t.id,addSel,rec);
+    setAddSel("");
+    toast(full ? "Мест нет — игрок в листе ожидания"
+               : seat.table ? `Игрок посажен · Стол ${seat.table}, место ${seat.seat}`
+               : "Игрок добавлен");
+  };
   const notReg=players.filter(p=> t && !(t.regs||[]).some(r=>r.pid===p.id));
   return (
     <div>
@@ -440,7 +509,16 @@ function Registrations({tours,saveTour,players,toast}){
         <select className="inp" style={{maxWidth:280}} value={tid||""} onChange={e=>setTid(e.target.value)}>
           {active.map(t=><option key={t.id} value={t.id}>{t.name} · {fmtDate(t.date)}</option>)}
         </select>
-        {t && <span className="count">{(t.regs||[]).length} / {t.max} мест · пришло {(t.regs||[]).filter(r=>r.checked).length}</span>}
+        {t && (()=>{
+          const seated=PClub.seatedCount(t.regs||[]);
+          const wait=PClub.waitingList(t.regs||[]).length;
+          const over=seated>(+t.max||0);
+          return <span className="count" style={over?{color:"var(--red)"}:null}>
+            {seated} / {t.max} мест · пришло {(t.regs||[]).filter(r=>r.checked).length}
+            {wait>0 && ` · в очереди ${wait}`}
+            {over && " · перебор мест!"}
+          </span>;
+        })()}
       </div>
       {t ? <>
       <div className="selbar">
@@ -457,7 +535,9 @@ function Registrations({tours,saveTour,players,toast}){
             {(t.regs||[]).map(r=>{const p=pById(r.pid);return(
               <tr className="rowh" key={r.pid}>
                 <td><Uname p={p}/></td>
-                <td>{r.table?<span className="seat-chip">Стол {r.table} · м.{r.seat}</span>:<span className="muted">—</span>}</td>
+                <td>{r.status==="wait"
+                      ? <span className="chip" style={{color:"var(--gold)"}}>в очереди · {PClub.myWaitPlace(t,r.pid)}</span>
+                      : r.table?<span className="seat-chip">Стол {r.table} · м.{r.seat}</span>:<span className="muted">—</span>}</td>
                 <td className="mono"><span className="coin"></span>{p?p.pts.toLocaleString("ru"):"—"}</td>
                 <td><span className={"chip "+(p&&p.tier==="gold"?"gold":"silver")}>{p&&p.tier==="gold"?"GOLD":"SILVER"}</span></td>
                 <td><div className={"togg"+(r.checked?" on":"")} onClick={()=>toggle(r.pid)}></div></td>
@@ -699,20 +779,22 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
 
   const setLevel=(d)=>saveTour({...t,level:Math.max(0,Math.min(BLINDS.length-1,level+d))});
   const start=()=>saveTour({...t,status:"live"});
-  const revive=(pid)=>saveTour({...t,regs:regs.map(r=>r.pid===pid?{...r,out:false,place:null}:r)});
+  /* Всё, что меняет одного игрока, пишем прямо в его запись — так параллельные
+     действия (выбывание одного и докупка другого) не затирают друг друга. */
+  const revive=(pid)=>store.updReg(t.id,pid,{out:false,place:null});
   // выбывание: если баунти/мистери — сначала выбираем, кто выбил
   const eliminate=(pid)=>{ if(ko){ setKoFor(pid); } else { doEliminate(pid,null); } };
   const doEliminate=(pid,killerId)=>{
     const place=inPlay.length;
-    const nt={...t,regs:regs.map(r=>r.pid===pid?{...r,out:true,place}:r)};
+    store.updReg(t.id,pid,{out:true,place});
     let award=0, msg="";
     if(killerId && ko==="bounty"){ award=2; msg="+2 за нокаут"; }
     if(killerId && ko==="mystery"){
       const pool2=(t.mysteryPool&&t.mysteryPool.length)?t.mysteryPool.slice():MYSTERY_POOL.slice();
       const idx=Math.floor(Math.random()*pool2.length);
-      award=pool2[idx]; msg="конверт +"+award; pool2.splice(idx,1); nt.mysteryPool=pool2;
+      award=pool2[idx]; msg="конверт +"+award; pool2.splice(idx,1);
+      saveTour({...t,mysteryPool:pool2});
     }
-    saveTour(nt);
     if(killerId && award){ const kp=pById(killerId); if(kp){ savePlayer({...kp,pts:(kp.pts||0)+award}); toast(nm({pid:killerId})+": "+msg); } }
     setKoFor(null);
   };
@@ -720,18 +802,44 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const rebuy=(pid,kind)=>{
     const base=parseInt(String(t.stack||"").replace(/\D/g,""))||0;
     const opt={small:{chips:30000,rub:1000},big:{chips:50000,rub:1500},addon:{chips:base,rub:1000}}[kind];
-    const nt={...t, rebuyTotal:((t.rebuyTotal||0)+opt.rub),
-      regs:regs.map(r=>r.pid===pid?{...r,stack:(r.stack||base)+opt.chips,rebuys:(r.rebuys||0)+1,spent:(r.spent||0)+opt.rub}:r)};
-    saveTour(nt); setRebuyFor(null);
+    const r=regs.find(x=>x.pid===pid)||{};
+    const field={small:"rbSmall",big:"rbBig",addon:"rbAddon"}[kind];
+    store.updReg(t.id,pid,{
+      stack:(r.stack||base)+opt.chips,
+      rebuys:(r.rebuys||0)+1,
+      spent:(r.spent||0)+opt.rub,
+      [field]:(r[field]||0)+1              // считаем каждый вид отдельно — для счёта
+    });
+    saveTour({...t, rebuyTotal:((t.rebuyTotal||0)+opt.rub)});
+    setRebuyFor(null);
     toast((kind==="addon"?"Аддон":kind==="big"?"Большой ребай":"Малый ребай")+" +"+opt.chips.toLocaleString("ru"));
+  };
+
+  /* Сколько игрок должен: входной плюс все докупки. На фрироллах входной 0. */
+  const billOf=(r)=>{
+    const parts=[];
+    if(buyNum) parts.push(`входной ${buyNum.toLocaleString("ru")}₽`);
+    if(r.rbSmall) parts.push(`малый ×${r.rbSmall}`);
+    if(r.rbBig)   parts.push(`большой ×${r.rbBig}`);
+    if(r.rbAddon) parts.push(`аддон ×${r.rbAddon}`);
+    // старые записи: вид докупки не сохранялся, показываем только количество
+    const known=(r.rbSmall||0)+(r.rbBig||0)+(r.rbAddon||0);
+    if((r.rebuys||0)>known) parts.push(`докупки ×${(r.rebuys||0)-known}`);
+    return {total:buyNum+(r.spent||0), text:parts.join(" · ")||"без оплаты"};
   };
   const finish=()=>{
     let rem=inPlay.length;
     const nregs=regs.map(r=> (!r.out) ? {...r,out:true,place:rem--} : r);
     const results=nregs.filter(r=>r.place!=null).map(r=>({pid:r.pid,place:r.place,pts:pointsForPlace(t.type,r.place)}));
-    saveTour({...t,status:"done",regs:nregs,results});
-    results.forEach(r=>{const p=pById(r.pid);if(p)savePlayer({...p,pts:(p.pts||0)+r.pts,games:(p.games||0)+1});});
-    toast("Турнир завершён, очки за места начислены");
+    /* сначала расставляем места всем оставшимся, потом закрываем турнир:
+       правила базы запрещают менять записи уже завершённого турнира */
+    const patch={};
+    nregs.forEach(r=>{ if(!regs.find(x=>x.pid===r.pid).out) patch[r.pid]={out:true,place:r.place}; });
+    Promise.resolve(store.updRegs(t.id,patch)).then(()=>{
+      saveTour({...t,status:"done",results});
+      results.forEach(r=>{const p=pById(r.pid);if(p)savePlayer({...p,pts:(p.pts||0)+r.pts,games:(p.games||0)+1});});
+      toast("Турнир завершён, очки за места начислены");
+    });
   };
 
   return (
@@ -787,6 +895,10 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
                 <div>
                   <div className="nm">{nm(r)}</div>
                   {(r.table||r.stack||r.rebuys)&&<div style={{fontSize:11,color:"var(--muted2)",marginTop:2}}>{r.table?`Стол ${r.table} · м.${r.seat}`:""}{r.stack?`  ·  стек ${r.stack.toLocaleString("ru")}`:""}{r.rebuys?`  ·  ребаи ×${r.rebuys}`:""}</div>}
+                  <div style={{fontSize:11,marginTop:3}}>
+                    <span style={{color:"var(--gold)",fontWeight:700}}>к оплате {billOf(r).total.toLocaleString("ru")}₽</span>
+                    <span style={{color:"var(--muted2)"}}>  ·  {billOf(r).text}</span>
+                  </div>
                 </div>
                 <div className="sp"></div>
                 <button className="btn ghost sm" title="Докупка" onClick={()=>setRebuyFor(r.pid)} style={{marginRight:8}}>{I.plus}</button>
@@ -799,7 +911,13 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
             {outList.length? outList.map(r=>(
               <div className="lc-row gone" key={r.pid}>
                 <div className="plc" style={{color:r.place<=3?"var(--gold)":"var(--muted2)"}}>#{r.place}</div>
-                <div className="nm">{nm(r)}</div>
+                <div>
+                  <div className="nm">{nm(r)}</div>
+                  <div style={{fontSize:11,marginTop:2}}>
+                    <span style={{color:"var(--gold)",fontWeight:700}}>к оплате {billOf(r).total.toLocaleString("ru")}₽</span>
+                    <span style={{color:"var(--muted2)"}}>  ·  {billOf(r).text}</span>
+                  </div>
+                </div>
                 <div className="sp"></div>
                 <button className="btn ghost sm" onClick={()=>revive(r.pid)}>Вернуть</button>
               </div>
@@ -857,7 +975,105 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
 }
 
 /* ---------- App ---------- */
-function App(){
+/* ================= Вход в админку =================
+   Раньше панель открывалась вообще без пароля: кто знал адрес, тот и управлял
+   клубом. Теперь вход через Firebase Auth, а правами рулит база — писать может
+   только тот, чей uid лежит в /admins. Одного знания адреса больше не хватает. */
+/* Firebase умеет входить только по почте. Чтобы организатору не пришлось
+   помнить адрес, короткий логин достраиваем до почты сами:
+   «Admin» -> «admin@paradise.club». Полную почту тоже можно ввести. */
+const ADMIN_DOMAIN="paradise.club";
+const toEmail=(login)=>{
+  const v=String(login||"").trim();
+  return v.includes("@") ? v : v.toLowerCase()+"@"+ADMIN_DOMAIN;
+};
+
+function Login({onDone}){
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+
+  const submit=(e)=>{
+    e.preventDefault();
+    setBusy(true); setErr("");
+    firebase.auth().signInWithEmailAndPassword(toEmail(email),pass)
+      .then(c=>onDone(c.user))
+      .catch(ex=>{
+        const m={
+          "auth/invalid-email":"Некорректный адрес почты",
+          "auth/user-not-found":"Такой администратор не найден",
+          "auth/wrong-password":"Неверный пароль",
+          "auth/invalid-credential":"Неверная почта или пароль",
+          "auth/too-many-requests":"Слишком много попыток. Подождите пару минут"
+        }[ex.code];
+        setErr(m||ex.message); setBusy(false);
+      });
+  };
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:1,padding:24}}>
+      <form onSubmit={submit} className="panel" style={{width:340,padding:28}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <Logo size={22} color="#e7c977"/>
+          <div style={{fontSize:20,fontWeight:700}}>Paradise</div>
+        </div>
+        <div style={{fontSize:11,letterSpacing:2,color:"var(--muted2)",textTransform:"uppercase",marginBottom:22}}>admin panel</div>
+
+        <input className="inp" type="text" autoComplete="username" placeholder="Логин"
+               value={email} onChange={e=>setEmail(e.target.value)} style={{width:"100%",marginBottom:10}} required/>
+        <input className="inp" type="password" autoComplete="current-password" placeholder="Пароль"
+               value={pass} onChange={e=>setPass(e.target.value)} style={{width:"100%",marginBottom:14}} required/>
+
+        {err && <div style={{color:"var(--red)",fontSize:13,marginBottom:12}}>{err}</div>}
+
+        <button className="btn" type="submit" disabled={busy} style={{width:"100%"}}>
+          {busy?"Входим…":"Войти"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function Root(){
+  const [user,setUser]=useState(undefined); // undefined = ещё проверяем
+  const [denied,setDenied]=useState(false);
+
+  React.useEffect(()=>{
+    if(!FB_ON){ setUser(null); return; }
+    return firebase.auth().onAuthStateChanged(u=>{
+      setUser(u||null);
+      if(!u){ setDenied(false); return; }
+      /* Проверяем, что этот аккаунт действительно в списке админов.
+         Это удобство для интерфейса — настоящая защита в правилах базы. */
+      _db.ref("admins/"+u.uid).once("value")
+        .then(s=>setDenied(!s.exists()))
+        .catch(()=>setDenied(true));
+    });
+  },[]);
+
+  if(!FB_ON) return <App/>;                    /* локальный демо-режим */
+  if(user===undefined) return <div style={{padding:40,color:"var(--muted)"}}>Загрузка…</div>;
+  if(!user) return <Login onDone={setUser}/>;
+
+  if(denied) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:1}}>
+      <div className="panel" style={{padding:28,maxWidth:380,textAlign:"center"}}>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:8}}>Нет прав администратора</div>
+        <div style={{color:"var(--muted)",fontSize:14,lineHeight:1.5,marginBottom:18}}>
+          Аккаунт {user.email} не в списке администраторов клуба.
+          Добавьте его uid в раздел <b>admins</b> базы.
+        </div>
+        <div className="mono" style={{fontSize:12,color:"var(--muted2)",wordBreak:"break-all",marginBottom:18}}>{user.uid}</div>
+        <button className="btn" onClick={()=>firebase.auth().signOut()}>Выйти</button>
+      </div>
+    </div>
+  );
+
+  return <App user={user}/>;
+}
+
+function App({user}){
   const [page,setPage]=useState("tours");
   const [tours,setTours]=useState([]);
   const [players,setPlayers]=useState([]);
@@ -887,7 +1103,16 @@ function App(){
             <a key={n.k} className={page===n.k?"on":""} onClick={()=>setPage(n.k)}>{n.i}<span>{n.l}</span></a>
           ))}
         </nav>
-        <div className="who"><div className="av">A</div><div className="txtw"><div className="nm">Администратор</div><div className="rl">Paradise Club</div></div></div>
+        <div className="who">
+          <div className="av">{user&&user.email?user.email[0].toUpperCase():"A"}</div>
+          <div className="txtw">
+            <div className="nm">{user&&user.email?user.email.split("@")[0]:"Администратор"}</div>
+            <div className="rl" onClick={()=>FB_ON&&firebase.auth().signOut()}
+                 style={FB_ON?{cursor:"pointer",textDecoration:"underline"}:null}>
+              {FB_ON?"Выйти":"Paradise Club"}
+            </div>
+          </div>
+        </div>
       </aside>
       <main className="main">
         {page==="tours" && <Tournaments tours={tours} saveTour={saveTour} delTour={delTour} players={players}/>}
@@ -900,7 +1125,7 @@ function App(){
     </div>
   );
 }
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(<Root/>);
 </script>
 </body>
 </html>

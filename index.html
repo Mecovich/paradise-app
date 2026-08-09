@@ -12,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
@@ -101,8 +102,9 @@ body{
 .brand{text-align:center;padding:22px 0 14px;display:flex;flex-direction:column;align-items:center;gap:10px;}
 .brand .mark{font-family:'TT Commons','Manrope',sans-serif;font-size:30px;font-weight:800;letter-spacing:.5px;background:linear-gradient(180deg,#ffffff,#bfe9d6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .brand .brand-line{width:46px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--crimson),var(--gold));margin-top:2px;opacity:.9;}
-.mering{padding:2.5px;border-radius:50%;background:linear-gradient(135deg,var(--crimson),var(--gold));flex-shrink:0;box-shadow:0 5px 16px -5px rgba(52,210,155,.55);}
-.mering .ava{border:2px solid var(--bg2);display:block;}
+/* аватар без обводки: раньше здесь было градиентное кольцо и свечение */
+.mering{padding:0;border-radius:50%;background:none;flex-shrink:0;box-shadow:none;}
+.mering .ava{border:none;display:block;}
 
 /* profile plate */
 .plate{background:var(--surface2);border:1px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);transition:transform .18s ease,background .18s ease;}
@@ -241,9 +243,12 @@ body{
 .nav .it.on svg{stroke:var(--crimson);}
 
 /* modal */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:40;display:flex;align-items:flex-end;justify-content:center;animation:fadeo .2s ease;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fadeo .2s ease;}
 @keyframes fadeo{from{opacity:0}to{opacity:1}}
-.sheet{width:100%;max-width:440px;background:linear-gradient(180deg,#12271f,#0a1810);border:1px solid var(--line);border-bottom:none;border-radius:26px 26px 0 0;padding:14px 22px 30px;animation:up .3s cubic-bezier(.2,.8,.2,1);}
+/* Высокие шторки (например «Редактировать профиль») раньше уезжали вниз:
+   футер с кнопками оказывался за краем экрана. Теперь шторка не выше 88vh,
+   содержимое прокручивается, а нижний отступ учитывает панель жестов. */
+.sheet{width:100%;max-width:440px;background:linear-gradient(180deg,#12271f,#0a1810);border:1px solid var(--line);border-bottom:none;border-radius:26px 26px 0 0;padding:14px 22px calc(30px + env(safe-area-inset-bottom));animation:up .3s cubic-bezier(.2,.8,.2,1);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 .sheet .grab{width:40px;height:4px;background:rgba(255,255,255,.16);border-radius:4px;margin:2px auto 20px;}
 .sheet h3{font-size:19px;font-weight:700;letter-spacing:-.3px;}
@@ -380,7 +385,7 @@ body{
 .btn-file:active{background:rgba(0,0,0,.42);}
 .btn-file svg{width:19px;height:19px;stroke:var(--muted);fill:none;stroke-width:1.6;}
 .rm{margin-top:12px;color:var(--crimson);font-size:14px;font-weight:600;cursor:pointer;display:inline-block;}
-.set-foot{display:flex;gap:12px;margin-top:6px;}
+.set-foot{display:flex;gap:12px;margin-top:18px;}
 .set-foot .btn{flex:1;margin-top:0;}
 
 /* live tournament sheet */
@@ -415,6 +420,124 @@ body{
 </head>
 <body>
 <div id="root"></div>
+<script>
+/* ================================================================
+   Чистая логика записи на турнир.
+   Без React и без Firebase — поэтому покрыта тестами (tests/logic.test.js).
+   Здесь решается: есть ли место, куда сажать, кто следующий в очереди.
+   ================================================================ */
+window.PClub = (function () {
+  "use strict";
+
+  /* В базе regs хранится объектом {pid: запись}, в старых данных — массивом.
+     Наружу всегда отдаём массив в порядке записи. */
+  function regsToArray(regs) {
+    if (!regs) return [];
+    var arr = Array.isArray(regs) ? regs.slice() : Object.keys(regs).map(function (k) {
+      return regs[k];
+    });
+    return arr.filter(Boolean).map(function (r) {
+      return Object.assign({}, r, {
+        status: r.status === "wait" ? "wait" : "reg", // старые записи без статуса = за столом
+        ts: typeof r.ts === "number" ? r.ts : 0
+      });
+    }).sort(function (a, b) {
+      return (a.ts - b.ts) || String(a.pid).localeCompare(String(b.pid));
+    });
+  }
+
+  /** Сколько человек реально сидит за столами (лист ожидания не считаем). */
+  function seatedCount(arr) {
+    return arr.filter(function (r) { return r.status !== "wait"; }).length;
+  }
+
+  function waitingList(arr) {
+    return arr.filter(function (r) { return r.status === "wait"; });
+  }
+
+  /** Свободный стол и место. Занятыми считаем только тех, кто сидит. */
+  function assignSeat(tour, arr) {
+    arr = arr || regsToArray(tour.regs);
+    var spt = tour.seatsPerTable || 9;
+    var tables = Math.max(1, Math.ceil((tour.max || spt) / spt));
+    var taken = {};
+    arr.forEach(function (r) {
+      if (r.status !== "wait" && r.table) taken[r.table + "-" + r.seat] = true;
+    });
+    var free = [];
+    for (var tb = 1; tb <= tables; tb++) {
+      for (var s = 1; s <= spt; s++) {
+        if (!taken[tb + "-" + s]) free.push({ table: tb, seat: s });
+      }
+    }
+    return free.length ? free[Math.floor(Math.random() * free.length)]
+                       : { table: null, seat: null };
+  }
+
+  /**
+   * Что произойдёт, если игрок pid нажмёт «Записаться».
+   * Ничего не пишет — только считает. Запись делает store.registerMe.
+   */
+  function decideRegistration(tour, pid) {
+    if (!tour) return { ok: false, reason: "missing" };
+    if (tour.status !== "reg") return { ok: false, reason: "closed" };
+
+    var arr = regsToArray(tour.regs);
+    var mine = arr.filter(function (r) { return r.pid === pid; })[0];
+    if (mine) {
+      return { ok: false, reason: "already", status: mine.status,
+               table: mine.table || null, seat: mine.seat || null };
+    }
+
+    var max = +tour.max || 0;
+    if (seatedCount(arr) >= max) {
+      return { ok: true, status: "wait", table: null, seat: null,
+               place: waitingList(arr).length + 1 };
+    }
+    var s = assignSeat(tour, arr);
+    return { ok: true, status: "reg", table: s.table, seat: s.seat };
+  }
+
+  /** Первый в листе ожидания (по времени записи). */
+  function nextInLine(tour) {
+    return waitingList(regsToArray(tour.regs))[0] || null;
+  }
+
+  /**
+   * Может ли игрок pid сам занять освободившееся место.
+   * Правила базы не дают трогать чужие записи, поэтому продвижение из очереди
+   * делает сам игрок, когда открывает приложение.
+   */
+  function canPromote(tour, pid) {
+    if (!tour || tour.status !== "reg") return false;
+    var arr = regsToArray(tour.regs);
+    var mine = arr.filter(function (r) { return r.pid === pid; })[0];
+    if (!mine || mine.status !== "wait") return false;
+    if (seatedCount(arr) >= (+tour.max || 0)) return false;
+    var first = waitingList(arr)[0];
+    return !!first && first.pid === pid;
+  }
+
+  /** Моё место в очереди: 1, 2, 3... или null. */
+  function myWaitPlace(tour, pid) {
+    var wl = waitingList(regsToArray(tour.regs));
+    for (var i = 0; i < wl.length; i++) if (wl[i].pid === pid) return i + 1;
+    return null;
+  }
+
+  return {
+    regsToArray: regsToArray,
+    seatedCount: seatedCount,
+    waitingList: waitingList,
+    assignSeat: assignSeat,
+    decideRegistration: decideRegistration,
+    nextInLine: nextInLine,
+    canPromote: canPromote,
+    myWaitPlace: myWaitPlace
+  };
+})();
+</script>
+
 <script type="text/babel">
 const {useState} = React;
 
@@ -431,25 +554,109 @@ const FIREBASE_CONFIG = {
 const FB_ON = FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.databaseURL.indexOf("PASTE_HERE")<0 && window.firebase;
 let _db=null;
 if(FB_ON){ try{ firebase.initializeApp(FIREBASE_CONFIG); _db=firebase.database(); }catch(e){ console.warn("Firebase:",e); } }
+
+/* ---- Анонимный вход. Без него правила базы не пустят ни читать, ни писать. ----
+   Он же даёт auth.uid, к которому привязывается карточка игрока: правила
+   разрешают править только ту запись, где uid совпадает с вошедшим. */
+let AUTH_UID = null;
+const authReady = (FB_ON && firebase.auth)
+  ? firebase.auth().signInAnonymously()
+      .then(c => { AUTH_UID = c.user.uid; return AUTH_UID; })
+      .catch(e => { console.error("Не удалось войти в Firebase:", e); return null; })
+  : Promise.resolve(null);
+
 const _local={tournaments:{},players:{},subs:{tournaments:[],players:[]}};
 const _arr=(c)=>Object.entries(_local[c]).map(([id,v])=>({id,...v}));
 const _emit=(c)=>_local.subs[c].forEach(cb=>cb(_arr(c)));
 const _clean=(o)=>JSON.parse(JSON.stringify(o));
+
+/* Приводим турнир к виду, который ждёт остальной код: regs всегда массив.
+   В базе regs лежит объектом {pid: запись} — так правила могут разрешить
+   игроку писать только собственную запись, не трогая чужие. */
+const _normTour=(t)=>({...t, regs: PClub.regsToArray(t.regs),
+                       results: t.results ? (Array.isArray(t.results)?t.results.filter(Boolean):Object.values(t.results)) : []});
+
 const store={
+  uid(){ return AUTH_UID; },
+  ready: authReady,
+
   on(c,cb){
-    if(FB_ON){ _db.ref(c).on("value",s=>{const v=s.val()||{};cb(Object.entries(v).map(([id,x])=>({id,...x})));}); }
-    else { _local.subs[c].push(cb); cb(_arr(c)); }
+    const wrap = c==="tournaments" ? (arr)=>cb(arr.map(_normTour)) : cb;
+    if(FB_ON){
+      authReady.then(()=>{
+        _db.ref(c).on("value",
+          s=>{const v=s.val()||{};wrap(Object.entries(v).map(([id,x])=>({id,...x})));},
+          e=>console.error("Нет доступа к "+c+":", e.message));
+      });
+    }
+    else { _local.subs[c].push((arr)=>wrap(arr)); wrap(_arr(c)); }
   },
+
+  /* Пишем только карточку игрока. Турниры из приложения не сохраняем —
+     правила базы этого и не разрешат, турнирами управляет админка. */
   save(c,item){
     const id=item.id||(FB_ON?_db.ref(c).push().key:uid());
     const data=_clean({...item,id});
-    if(FB_ON) _db.ref(c+"/"+id).set(data); else { _local[c][id]=data; _emit(c); }
+    if(c==="players" && AUTH_UID) data.uid=AUTH_UID;
+    if(FB_ON) _db.ref(c+"/"+id).update(data).catch(e=>console.error("save "+c+":",e.message));
+    else { _local[c][id]={..._local[c][id],...data}; _emit(c); }
     return id;
   },
-  del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove(); else { delete _local[c][id]; _emit(c); } },
+
+  /* ---------- запись на турнир ---------- */
+
+  /** Записаться. Возвращает {status:"reg"|"wait", table, seat, place} либо кидает ошибку. */
+  registerMe(tour, pid){
+    const d = PClub.decideRegistration(tour, pid);
+    if(!d.ok){
+      if(d.reason==="already") return Promise.resolve(d);
+      return Promise.reject(new Error(d.reason==="closed" ? "Запись на турнир закрыта" : "Турнир не найден"));
+    }
+    const rec = {pid, status:d.status, checked:false, ts:Date.now()};
+    if(d.table){ rec.table=d.table; rec.seat=d.seat; }
+
+    if(!FB_ON){
+      const t=_local.tournaments[tour.id]; if(!t) return Promise.reject(new Error("Турнир не найден"));
+      t.regs=t.regs||{}; if(Array.isArray(t.regs)) t.regs=Object.fromEntries(t.regs.map(r=>[r.pid,r]));
+      t.regs[pid]=rec; _emit("tournaments");
+      return Promise.resolve(d);
+    }
+    /* Транзакция на СВОЁЙ записи: если параллельно записались с другого устройства,
+       второй раз не продублируем. */
+    return _db.ref("tournaments/"+tour.id+"/regs/"+pid)
+      .transaction(cur => cur ? undefined : rec)
+      .then(res => res.committed ? d : {ok:false, reason:"already", ...(res.snapshot.val()||{})});
+  },
+
+  /** Отменить свою запись. */
+  cancelMe(tour, pid){
+    if(!FB_ON){
+      const t=_local.tournaments[tour.id];
+      if(t&&t.regs){ if(Array.isArray(t.regs)) t.regs=t.regs.filter(r=>r.pid!==pid); else delete t.regs[pid]; _emit("tournaments"); }
+      return Promise.resolve();
+    }
+    return _db.ref("tournaments/"+tour.id+"/regs/"+pid).remove();
+  },
+
+  /** Занять освободившееся место, если я первый в листе ожидания. */
+  promoteMe(tour, pid){
+    if(!PClub.canPromote(tour, pid)) return Promise.resolve(false);
+    const s = PClub.assignSeat(tour, PClub.regsToArray(tour.regs));
+    if(!s.table) return Promise.resolve(false);
+    const patch = {status:"reg", table:s.table, seat:s.seat};
+    if(!FB_ON){
+      const t=_local.tournaments[tour.id];
+      if(t&&t.regs&&t.regs[pid]){ Object.assign(t.regs[pid],patch); _emit("tournaments"); }
+      return Promise.resolve(true);
+    }
+    return _db.ref("tournaments/"+tour.id+"/regs/"+pid)
+      .transaction(cur => (cur && cur.status==="wait") ? {...cur,...patch} : undefined)
+      .then(res => res.committed);
+  },
+
   seed(c,items){
-    if(FB_ON){ _db.ref(c).once("value",s=>{ if(!s.exists()){ const m={}; items.forEach(it=>{const id=it.id||_db.ref(c).push().key; m[id]=_clean({...it,id});}); _db.ref(c).set(m);} }); }
-    else if(!Object.keys(_local[c]).length){ items.forEach(it=>{const id=it.id||uid(); _local[c][id]=_clean({...it,id});}); _emit(c); }
+    if(FB_ON) return; /* демо-данные в боевую базу не заливаем */
+    if(!Object.keys(_local[c]).length){ items.forEach(it=>{const id=it.id||uid(); _local[c][id]=_clean({...it,id});}); _emit(c); }
   }
 };
 const MONTHS=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
@@ -457,21 +664,21 @@ const MONTHS_F=["января","февраля","марта","апреля","м�
 const WD=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const fmtFull=(dd)=>{const x=new Date((dd||"")+"T00:00:00");return isNaN(x.getTime())?dd:`${x.getDate()} ${MONTHS_F[x.getMonth()]} ${x.getFullYear()} г.`;};
 const BLINDS_APP=[[100,200],[150,300],[200,400],[300,600],[400,800],[500,1000],[700,1400],[1000,2000],[1500,3000],[2000,4000],[3000,6000],[5000,10000]];
-/* случайная рассадка: свободный стол + место */
-function assignSeat(t){
-  const spt=t.seatsPerTable||9;
-  const tables=Math.max(1,Math.ceil((t.max||spt)/spt));
-  const taken=new Set((t.regs||[]).filter(r=>r.table).map(r=>r.table+"-"+r.seat));
-  const free=[];
-  for(let tb=1;tb<=tables;tb++) for(let s=1;s<=spt;s++){ if(!taken.has(tb+"-"+s)) free.push({table:tb,seat:s}); }
-  return free.length? free[Math.floor(Math.random()*free.length)] : {table:null,seat:null};
-}
-function toCard(t,i){
+/* случайная рассадка живёт в PClub (он же покрыт тестами) */
+const assignSeat=(t)=>PClub.assignSeat(t);
+
+function toCard(t,i,pid){
   const d=new Date((t.date||"")+"T00:00:00");
   const dateStr=isNaN(d.getTime())?t.date:`${d.getDate()} ${MONTHS[d.getMonth()]}, ${WD[d.getDay()]}`;
-  const regs=(t.regs||[]).length;
+  const arr=PClub.regsToArray(t.regs);
+  const seated=PClub.seatedCount(arr);
+  const waiting=PClub.waitingList(arr).length;
+  const mine=pid?arr.filter(r=>r.pid===pid)[0]:null;
   return {id:t.id,name:t.name,sub:t.type||"Tourney",cls:["hh","free","cls"][i%3],date:dateStr,time:t.time,
-    players:`${regs} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status,banner:t.banner||""};
+    players:`${seated} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status,banner:t.banner||"",
+    seated, max:+t.max||0, waiting, full:seated>=(+t.max||0),
+    myStatus:mine?mine.status:null, myTable:mine?(mine.table||null):null, mySeat:mine?(mine.seat||null):null,
+    myPlace:mine&&mine.status==="wait"?PClub.myWaitPlace(t,pid):null};
 }
 
 /* плавный счётчик чисел */
@@ -516,11 +723,18 @@ if(TG){
 const haptic=(s="light")=>{try{TG&&TG.HapticFeedback&&TG.HapticFeedback.impactOccurred(s);}catch(e){}};
 const IN_TG = !!(TG && TG.initData && TG.initData.length); // реально внутри Telegram
 const TGU = TG && TG.initDataUnsafe && TG.initDataUnsafe.user; // {username, first_name, photo_url, ...}
-/* стабильный id игрока: из Telegram, иначе dev-ник для теста в браузере (?u=ник) */
+/* Кто играет.
+   Раньше здесь был фолбэк ?u=ник — открыв ссылку в обычном браузере, можно было
+   назваться любым игроком и получить его очки. Теперь подстановка ника работает
+   ТОЛЬКО в демо-режиме без базы (FB_ON=false). С боевой базой личность берётся
+   исключительно из Telegram, а без Telegram приложение просто не пускает. */
 const _q=new URLSearchParams(location.search);
-const MY_ID = TGU && TGU.id ? "tg"+TGU.id : ("dev-"+(_q.get("u")||"ceoblaze"));
+const DEMO_MODE = !FB_ON;
+const MY_ID = (TGU && TGU.id) ? "tg"+TGU.id
+            : (DEMO_MODE ? "dev-"+(_q.get("u")||"ceoblaze") : null);
 const IDENTITY = {
-  name: TGU ? (TGU.username ? "@"+TGU.username : TGU.first_name) : ("@"+(_q.get("u")||"ceoblaze")),
+  name: TGU ? (TGU.username ? "@"+TGU.username : TGU.first_name)
+            : (DEMO_MODE ? "@"+(_q.get("u")||"ceoblaze") : ""),
   photo: TGU && TGU.photo_url ? TGU.photo_url : null
 };
 const GOLD_AT=1500; // порог уровня Gold
@@ -601,7 +815,17 @@ function TCard({t, live, done, onReg, onWatch, onResults}){
         ? <div className="cta watch" onClick={()=>{haptic();onWatch&&onWatch(t);}}><span className="lv"></span>Турнир идёт — смотреть</div>
         : done
         ? <div className="cta watch" onClick={()=>{haptic();onResults&&onResults(t);}}>Смотреть результаты →</div>
-        : <div className="cta reg" onClick={()=>{haptic("medium");onReg(t);}}>Записаться</div>}
+        : t.myStatus==="reg"
+        ? <div className="cta watch" onClick={()=>{haptic();onReg(t);}}>
+            ✓ Вы записаны{t.myTable?` · стол ${t.myTable}, место ${t.mySeat}`:""}
+          </div>
+        : t.myStatus==="wait"
+        ? <div className="cta watch" onClick={()=>{haptic();onReg(t);}}>
+            ⏳ В очереди{t.myPlace?` · ${t.myPlace}-й`:""}
+          </div>
+        : <div className="cta reg" onClick={()=>{haptic("medium");onReg(t);}}>
+            {t.full ? `В лист ожидания${t.waiting?` · ${t.waiting} в очереди`:""}` : "Записаться"}
+          </div>}
     </div>
   );
 }
@@ -991,11 +1215,47 @@ function Profile({history=[], active=[]}){
   );
 }
 
+/* Ужимаем аватар до квадрата 512×512 перед сохранением.
+   Раньше файл клался в базу как есть: снимок с телефона на 5 МБ превращался
+   в ~7 МБ base64, который потом качал КАЖДЫЙ игрок при каждом открытии.
+   Теперь на выходе ~40 КБ. */
+function shrinkAvatar(file){
+  return new Promise((resolve,reject)=>{
+    const SIZE=512;
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const side=Math.min(img.width,img.height);          // обрезаем по центру в квадрат
+      const sx=(img.width-side)/2, sy=(img.height-side)/2;
+      const c=document.createElement("canvas");
+      c.width=c.height=SIZE;
+      const ctx=c.getContext("2d");
+      ctx.fillStyle="#0e1f18"; ctx.fillRect(0,0,SIZE,SIZE); // фон под прозрачные PNG
+      ctx.drawImage(img,sx,sy,side,side,0,0,SIZE,SIZE);
+      resolve(c.toDataURL("image/jpeg",0.75));
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error("Не удалось прочитать изображение")); };
+    img.src=url;
+  });
+}
+
 function ProfileSettings({onClose,onSaved}){
   const [nick,setNick]=useState((ME.name||"").replace(/^@/,""));
   const [photo,setPhoto]=useState(ME.photo);
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState(false);
   const fileRef=React.useRef();
-  const pick=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setPhoto(r.result);r.readAsDataURL(f);};
+  const pick=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    setErr("");
+    if(f.size>10*1024*1024){ setErr("Файл больше 10 МБ — выберите поменьше"); return; }
+    setBusy(true);
+    shrinkAvatar(f)
+      .then(d=>{ setPhoto(d); setBusy(false); })
+      .catch(ex=>{ setErr(ex.message); setBusy(false); });
+    e.target.value=""; // чтобы тот же файл можно было выбрать повторно
+  };
   const save=()=>{
     const n=nick.trim();
     const uname=n?(n.startsWith("@")?n:"@"+n):IDENTITY.name;
@@ -1019,33 +1279,51 @@ function ProfileSettings({onClose,onSaved}){
           <label>Аватар</label>
           <div className="ava-row">
             <div className="ava-prev">{photo?<img src={photo} alt=""/>:<EmptyAva/>}</div>
-            <button className="btn-file" onClick={()=>fileRef.current.click()}>
+            <button className="btn-file" onClick={()=>fileRef.current.click()} disabled={busy}>
               <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L18 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg>
-              Загрузить фото
+              {busy?"Обрабатываем…":"Загрузить фото"}
             </button>
             <input type="file" accept="image/*" ref={fileRef} onChange={pick} style={{display:"none"}}/>
           </div>
           {photo && <div className="rm" onClick={()=>setPhoto(null)}>Удалить аватар</div>}
+          {err && <div className="hint" style={{color:"var(--coral)"}}>{err}</div>}
           <div className="hint">JPG, PNG, WEBP, GIF. До 10 МБ. Обрежется в квадрат 512×512.</div>
         </div>
         <div className="set-foot">
           <button className="btn gh" onClick={onClose}>Отмена</button>
-          <button className="btn g" onClick={save}>Сохранить</button>
+          <button className="btn g" onClick={save} disabled={busy}>Сохранить</button>
         </div>
       </div>
     </div>
   );
 }
 
-function RegSheet({t,onRegister,onClose}){
-  const [done,setDone]=useState(false);
-  const [seat,setSeat]=useState(null);
-  const doReg=()=>{ const s=onRegister?onRegister(t.id):null; setSeat(s); setDone(true); };
+function RegSheet({t,onRegister,onCancel,onClose}){
+  const [phase,setPhase]=useState(t.myStatus?"mine":"form"); // form | mine | done | busy
+  const [res,setRes]=useState(t.myStatus?{status:t.myStatus,table:t.myTable,seat:t.mySeat,place:t.myPlace}:null);
+  const [err,setErr]=useState("");
+
+  const doReg=()=>{
+    setPhase("busy"); setErr("");
+    Promise.resolve(onRegister(t.id))
+      .then(r=>{ setRes(r); setPhase("done"); })
+      .catch(e=>{ setErr(e.message||"Не удалось записаться"); setPhase("form"); });
+  };
+  const doCancel=()=>{
+    setPhase("busy"); setErr("");
+    Promise.resolve(onCancel(t.id))
+      .then(()=>onClose())
+      .catch(e=>{ setErr(e.message||"Не удалось отменить"); setPhase("mine"); });
+  };
+
+  const waiting = res && res.status==="wait";
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" onClick={e=>e.stopPropagation()}>
         <div className="grab"></div>
-        {!done ? <>
+
+        {(phase==="form"||phase==="busy") && !res && <>
           <h3>Запись на турнир</h3>
           <div className="msub">{t.name} · {t.sub}</div>
           <div className="mrow"><span className="k">Дата</span><span className="v">{t.date}</span></div>
@@ -1054,16 +1332,49 @@ function RegSheet({t,onRegister,onClose}){
           <div className="mrow"><span className="k">Стартовый стек</span><span className="v">{t.stack}</span></div>
           <div className="mrow"><span className="k">Регистрация</span><span className="v">{t.reg}</span></div>
           <div className="mrow"><span className="k">Мест занято</span><span className="v">{t.players}</span></div>
-          <button className="btn g" onClick={doReg}>Записаться</button>
+          {t.waiting>0 && <div className="mrow"><span className="k">В листе ожидания</span><span className="v">{t.waiting}</span></div>}
+          {err && <div className="msub" style={{color:"var(--coral)",margin:"10px 0 0"}}>{err}</div>}
+          {t.full && <div className="msub" style={{margin:"10px 0 0"}}>
+            Мест нет. Запишем вас в лист ожидания — освободится место, займёте его первым.
+          </div>}
+          <button className="btn g" onClick={doReg} disabled={phase==="busy"}>
+            {phase==="busy" ? "Записываем…" : t.full ? "В лист ожидания" : "Записаться"}
+          </button>
           <button className="btn gh" onClick={onClose}>Отмена</button>
-        </> : (
+        </>}
+
+        {(phase==="mine"||(phase==="busy"&&res)) && <>
+          <h3>{res.status==="wait" ? "Вы в листе ожидания" : "Вы записаны"}</h3>
+          <div className="msub">{t.name} · {t.date} · {t.time}</div>
+          {res.status==="wait"
+            ? <div className="msub" style={{margin:"10px 0 0"}}>
+                Ваш номер в очереди — {res.place||"—"}. Как только кто-то откажется,
+                место станет вашим автоматически.
+              </div>
+            : res.table ? <>
+                <div className="msub" style={{margin:"10px 0 0"}}>Ваше место за столом</div>
+                <div className="seat-badge"><div className="sb-t"><span>Стол</span><b>{res.table}</b></div><div className="sb-div"></div><div className="sb-t"><span>Место</span><b>{res.seat}</b></div></div>
+              </> : <div className="msub" style={{margin:"8px 0 0"}}>Ждём вас на {t.name} · {t.time}</div>}
+          {err && <div className="msub" style={{color:"var(--coral)",margin:"10px 0 0"}}>{err}</div>}
+          <button className="btn gh" onClick={doCancel} disabled={phase==="busy"}>
+            {phase==="busy" ? "Отменяем…" : res.status==="wait" ? "Выйти из очереди" : "Отменить запись"}
+          </button>
+          <button className="btn g" onClick={onClose}>Закрыть</button>
+        </>}
+
+        {phase==="done" && (
           <div className="ok">
-            <div className="big">♥</div>
-            <h3>Вы записаны</h3>
-            {seat && seat.table ? <>
-              <div className="msub" style={{margin:"10px 0 0"}}>Ваше место за столом</div>
-              <div className="seat-badge"><div className="sb-t"><span>Стол</span><b>{seat.table}</b></div><div className="sb-div"></div><div className="sb-t"><span>Место</span><b>{seat.seat}</b></div></div>
-            </> : <div className="msub" style={{margin:"8px 0 0"}}>Ждём вас на {t.name} · {t.time}</div>}
+            <div className="big">{waiting?"⏳":"♥"}</div>
+            <h3>{waiting?"Вы в листе ожидания":"Вы записаны"}</h3>
+            {waiting
+              ? <div className="msub" style={{margin:"10px 0 0"}}>
+                  Ваш номер в очереди — {res.place||"—"}. Освободится место — займёте его первым,
+                  ничего делать не нужно.
+                </div>
+              : res && res.table ? <>
+                  <div className="msub" style={{margin:"10px 0 0"}}>Ваше место за столом</div>
+                  <div className="seat-badge"><div className="sb-t"><span>Стол</span><b>{res.table}</b></div><div className="sb-div"></div><div className="sb-t"><span>Место</span><b>{res.seat}</b></div></div>
+                </> : <div className="msub" style={{margin:"8px 0 0"}}>Ждём вас на {t.name} · {t.time}</div>}
             <button className="btn g" onClick={onClose}>Готово</button>
           </div>
         )}
@@ -1115,7 +1426,7 @@ function LiveSheet({data,onClose}){
             <div className={"lrow"+(p.me?" me":"")} key={"r"+i}>
               <div className="la"><Ava p={p}/></div>
               <div className="ln">{p.name}{p.me&&<span style={{color:"var(--muted2)",fontWeight:400,fontSize:12}}> · вы</span>}</div>
-              <div className="lx stack"><span className="coin"></span>{p.stack.toLocaleString("ru")}</div>
+              <div className="lx stack"><span className="coin"></span>{(p.pts||0).toLocaleString("ru")}</div>
             </div>
           )) : <div className="hempty" style={{padding:"24px 0"}}><div style={{fontSize:14}}>Пока никто не в игре</div></div>}
           {data.out.length>0 && <div className="lgroup-h"><span className="d out"></span>Выбыли · {data.out.length}</div>}
@@ -1133,6 +1444,22 @@ function LiveSheet({data,onClose}){
   );
 }
 
+/* Экран для случая, когда страницу открыли по прямой ссылке, а не из бота */
+function NeedTelegram(){
+  return (
+    <div className="app" style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"32px 26px"}}>
+      <div style={{textAlign:"center",position:"relative",zIndex:1}}>
+        <div style={{opacity:.9,display:"flex",justifyContent:"center"}}><Logo size={64} color="#34d29b"/></div>
+        <h3 style={{margin:"22px 0 10px",fontSize:22,fontWeight:700}}>Откройте клуб в Telegram</h3>
+        <div style={{color:"var(--muted)",fontSize:15,lineHeight:1.5}}>
+          Приложение работает внутри нашего бота — так мы понимаем, кто вы,
+          и показываем ваши записи и рейтинг.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App(){
   const [agreed,setAgreed]=useState(false);
   const [tab,setTab]=useState("home");
@@ -1142,15 +1469,39 @@ function App(){
   const [tours,setTours]=useState([]);
   const [players,setPlayers]=useState([]);
   React.useEffect(()=>{
+    if(!MY_ID) return;
+    let created=false, photoSynced=false; // без флагов неудачная запись повторялась бы на каждом обновлении
     store.on("players",(arr)=>{
       setPlayers(arr);
-      // авто-регистрация текущего игрока, чтобы он появился в админке
-      if(!arr.some(p=>p.id===MY_ID)){
+      const me=arr.find(p=>p.id===MY_ID);
+      // карточка игрока создаётся один раз — при первом заходе
+      if(!created && !me){
+        created=true;
         store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0, bonus:0, photo:IDENTITY.photo||null});
+        return;
+      }
+      /* Подтягиваем аватар из Telegram, если своего ещё нет.
+         Свой загруженный аватар не перезатираем — он всегда в приоритете. */
+      if(!photoSynced && me && !me.photo && IDENTITY.photo){
+        photoSynced=true;
+        store.save("players",{...me, photo:IDENTITY.photo});
       }
     });
     store.on("tournaments",setTours);
   },[]);
+
+  /* Продвижение из листа ожидания.
+     Правила базы не дают писать в чужие записи, поэтому освободившееся место
+     занимает сам игрок — как только приложение видит, что за столом стало
+     свободно, а он первый в очереди. */
+  React.useEffect(()=>{
+    if(!MY_ID) return;
+    tours.forEach(t=>{
+      if(PClub.canPromote(t,MY_ID)){
+        store.promoteMe(t,MY_ID).then(ok=>{ if(ok) haptic("medium"); });
+      }
+    });
+  },[tours]);
   // мой профиль из store
   const myPlayer=players.find(p=>p.id===MY_ID);
   const sortedP=[...players].sort((a,b)=>b.pts-a.pts);
@@ -1165,26 +1516,37 @@ function App(){
   ME.rank=myPlayer?(sortedP.findIndex(p=>p.id===MY_ID)+1):(players.length+1);
   // деривация карточек из данных store
   const byDate=(a,b)=>(b.date||"").localeCompare(a.date||"");
-  const live=tours.filter(t=>t.status==="live").map(toCard);
-  const open=tours.filter(t=>t.status==="reg").sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(toCard);
-  const past=tours.filter(t=>t.status==="done").sort(byDate).map(toCard);
+  const live=tours.filter(t=>t.status==="live").map((t,i)=>toCard(t,i,MY_ID));
+  const open=tours.filter(t=>t.status==="reg").sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map((t,i)=>toCard(t,i,MY_ID));
+  const past=tours.filter(t=>t.status==="done").sort(byDate).map((t,i)=>toCard(t,i,MY_ID));
   // моя история и активные записи из турниров
   const myHistory=tours.filter(t=>t.status==="done").map(t=>{
     const r=(t.results||[]).find(x=>x.pid===MY_ID);
     return r?{name:t.name,type:t.type||"Tourney",date:fmtFull(t.date),place:r.place,of:(t.regs||[]).length,pts:r.pts,_d:t.date}:null;
   }).filter(Boolean).sort((a,b)=>(a._d||"").localeCompare(b._d||""));
   const myActive=tours.filter(t=>t.status!=="done" && (t.regs||[]).some(r=>r.pid===MY_ID))
-    .map(t=>{const r=(t.regs||[]).find(x=>x.pid===MY_ID);return {name:t.name,date:fmtFull(t.date),note:t.status==="live"?"Идёт сейчас":"Запись открыта",table:r&&r.table,seat:r&&r.seat};});
-  // регистрация на турнир с рандомной рассадкой
-  const saveTour=(x)=>store.save("tournaments",x);
+    .map(t=>{
+      const r=(t.regs||[]).find(x=>x.pid===MY_ID);
+      const place=r&&r.status==="wait"?PClub.myWaitPlace(t,MY_ID):null;
+      return {name:t.name,date:fmtFull(t.date),
+        note: r&&r.status==="wait" ? `В листе ожидания · ${place||"—"}-й`
+            : t.status==="live" ? "Идёт сейчас" : "Запись открыта",
+        table:r&&r.table,seat:r&&r.seat};
+    });
+  /* Запись и отмена. Пишем ТОЛЬКО свою запись в tournaments/<id>/regs/<мой id>,
+     а не весь турнир целиком — иначе две одновременные записи затирали бы друг друга. */
   const registerMe=(tid)=>{
-    const tt=tours.find(x=>x.id===tid); if(!tt) return null;
-    const regs=tt.regs||[];
-    const exist=regs.find(r=>r.pid===MY_ID);
-    if(exist) return {table:exist.table,seat:exist.seat};
-    const seat=assignSeat(tt);
-    saveTour({...tt,regs:[...regs,{pid:MY_ID,checked:false,table:seat.table,seat:seat.seat}]});
-    return seat;
+    const tt=tours.find(x=>x.id===tid);
+    if(!tt) return Promise.reject(new Error("Турнир не найден"));
+    return store.registerMe(tt,MY_ID).then(r=>({
+      status:r.status||"reg", table:r.table||null, seat:r.seat||null,
+      place:r.place||PClub.myWaitPlace(tt,MY_ID)
+    }));
+  };
+  const cancelMe=(tid)=>{
+    const tt=tours.find(x=>x.id===tid);
+    if(!tt) return Promise.reject(new Error("Турнир не найден"));
+    return store.cancelMe(tt,MY_ID);
   };
   const showResults=(card)=>{
     const tt=tours.find(x=>x.id===card.id); if(!tt) return;
@@ -1197,12 +1559,18 @@ function App(){
     const tt=tours.find(x=>x.id===card.id); if(!tt) return;
     const base=parseInt(String(tt.stack||"").replace(/\D/g,""))||0;
     const regs=tt.regs||[]; const pById=id=>players.find(x=>x.id===id);
-    const inPlay=regs.filter(r=>!r.out).map(r=>{const p=pById(r.pid);return {name:p?p.username:"@username",photo:p?p.photo:null,stack:r.stack||base,me:r.pid===MY_ID};}).sort((a,b)=>b.stack-a.stack);
-    const out=regs.filter(r=>r.out).sort((a,b)=>(a.place||0)-(b.place||0)).map(r=>{const p=pById(r.pid);return {name:p?p.username:"@username",photo:p?p.photo:null,place:r.place};});
+    /* pts берём из карточки игрока — это его настоящий рейтинг клуба */
+    const inPlay=regs.filter(r=>!r.out).map(r=>{const p=pById(r.pid);
+      return {name:p?p.username:"@username",photo:p?p.photo:null,stack:r.stack||base,pts:p?(p.pts||0):0,me:r.pid===MY_ID};})
+      .sort((a,b)=>b.stack-a.stack);
+    const out=regs.filter(r=>r.out).sort((a,b)=>(a.place||0)-(b.place||0)).map(r=>{const p=pById(r.pid);
+      return {name:p?p.username:"@username",photo:p?p.photo:null,pts:p?(p.pts||0):0,place:r.place};});
     const lvl=Math.max(0,Math.min(BLINDS_APP.length-1,tt.level||0));
     setWatch({name:tt.name,total:regs.length,inPlay,out,blinds:BLINDS_APP[lvl]});
   };
   try{ window.__paradise={players,tours,myId:MY_ID}; }catch(e){}
+  /* Без Telegram личность подтвердить нечем — внутрь не пускаем */
+  if(!MY_ID) return <NeedTelegram/>;
   if(!agreed) return <Onboarding onAgree={()=>setAgreed(true)}/>;
   const nav=[
     {k:"home",l:"Главная",i:Ico.home},
@@ -1233,7 +1601,8 @@ function App(){
           ))}
         </div>
       </div>
-      {reg && <RegSheet t={reg} onRegister={registerMe} onClose={()=>setReg(null)}/>}
+      {reg && <RegSheet t={(open.concat(live,past).find(c=>c.id===reg.id))||reg}
+                        onRegister={registerMe} onCancel={cancelMe} onClose={()=>setReg(null)}/>}
       {watch && <LiveSheet data={watch} onClose={()=>setWatch(null)}/>}
       {standings && <ResultsSheet data={standings} onClose={()=>setStandings(null)}/>}
     </div>
