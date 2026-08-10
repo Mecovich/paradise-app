@@ -385,7 +385,13 @@ body{
 .btn-file:active{background:rgba(0,0,0,.42);}
 .btn-file svg{width:19px;height:19px;stroke:var(--muted);fill:none;stroke-width:1.6;}
 .rm{margin-top:12px;color:var(--crimson);font-size:14px;font-weight:600;cursor:pointer;display:inline-block;}
-.set-foot{display:flex;gap:12px;margin-top:18px;}
+/* Шторка-форма: шапка и кнопки закреплены, прокручивается только середина.
+   Так «Сохранить» видно сразу, а не после прокрутки до конца. */
+.sheet.sheet-col{display:flex;flex-direction:column;overflow:hidden;}
+.sheet.sheet-col .set-head{flex:0 0 auto;}
+.sheet-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;margin:0 -22px;padding:0 22px 4px;}
+.set-foot{display:flex;gap:12px;flex:0 0 auto;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
 .set-foot .btn{flex:1;margin-top:0;}
 
 /* live tournament sheet */
@@ -1267,27 +1273,29 @@ function ProfileSettings({onClose,onSaved}){
   };
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={e=>e.stopPropagation()}>
+      <div className="sheet sheet-col" onClick={e=>e.stopPropagation()}>
         <div className="grab"></div>
         <div className="set-head"><h3>Редактировать профиль</h3><span className="xbtn" onClick={onClose}>×</span></div>
-        <div className="field2">
-          <label>Ник</label>
-          <input className="inp2" value={nick} onChange={e=>setNick(e.target.value)} placeholder="username"/>
-          <div className="hint">Можно менять не чаще раза в 24 часа.</div>
-        </div>
-        <div className="field2">
-          <label>Аватар</label>
-          <div className="ava-row">
-            <div className="ava-prev">{photo?<img src={photo} alt=""/>:<EmptyAva/>}</div>
-            <button className="btn-file" onClick={()=>fileRef.current.click()} disabled={busy}>
-              <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L18 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg>
-              {busy?"Обрабатываем…":"Загрузить фото"}
-            </button>
-            <input type="file" accept="image/*" ref={fileRef} onChange={pick} style={{display:"none"}}/>
+        <div className="sheet-scroll">
+          <div className="field2">
+            <label>Ник</label>
+            <input className="inp2" value={nick} onChange={e=>setNick(e.target.value)} placeholder="username"/>
+            <div className="hint">Можно менять не чаще раза в 24 часа.</div>
           </div>
-          {photo && <div className="rm" onClick={()=>setPhoto(null)}>Удалить аватар</div>}
-          {err && <div className="hint" style={{color:"var(--coral)"}}>{err}</div>}
-          <div className="hint">JPG, PNG, WEBP, GIF. До 10 МБ. Обрежется в квадрат 512×512.</div>
+          <div className="field2">
+            <label>Аватар</label>
+            <div className="ava-row">
+              <div className="ava-prev">{photo?<img src={photo} alt=""/>:<EmptyAva/>}</div>
+              <button className="btn-file" onClick={()=>fileRef.current.click()} disabled={busy}>
+                <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L18 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg>
+                {busy?"Обрабатываем…":"Загрузить фото"}
+              </button>
+              <input type="file" accept="image/*" ref={fileRef} onChange={pick} style={{display:"none"}}/>
+            </div>
+            {photo && <div className="rm" onClick={()=>setPhoto(null)}>Удалить аватар</div>}
+            {err && <div className="hint" style={{color:"var(--coral)"}}>{err}</div>}
+            <div className="hint">JPG, PNG, WEBP, GIF. До 10 МБ. Обрежется в квадрат 512×512.</div>
+          </div>
         </div>
         <div className="set-foot">
           <button className="btn gh" onClick={onClose}>Отмена</button>
