@@ -212,7 +212,127 @@ input.mini:focus{border-color:var(--gold-dim);}
 <body>
 <div class="suitgrid"></div>
 <div id="root"></div>
-<script src="paradise-core.js"></script>
+<script>
+/* ================================================================
+   Чистая логика записи на турнир.
+   Без React и без Firebase — поэтому покрыта тестами (tests/logic.test.js).
+   Здесь решается: есть ли место, куда сажать, кто следующий в очереди.
+
+   Код намеренно продублирован в index.html: оба файла должны оставаться
+   самодостаточными, чтобы их можно было заливать на хостинг по одному.
+   Тест logic.test.js следит, чтобы копии не разъехались.
+   ================================================================ */
+window.PClub = (function () {
+  "use strict";
+
+  /* В базе regs хранится объектом {pid: запись}, в старых данных — массивом.
+     Наружу всегда отдаём массив в порядке записи. */
+  function regsToArray(regs) {
+    if (!regs) return [];
+    var arr = Array.isArray(regs) ? regs.slice() : Object.keys(regs).map(function (k) {
+      return regs[k];
+    });
+    return arr.filter(Boolean).map(function (r) {
+      return Object.assign({}, r, {
+        status: r.status === "wait" ? "wait" : "reg", // старые записи без статуса = за столом
+        ts: typeof r.ts === "number" ? r.ts : 0
+      });
+    }).sort(function (a, b) {
+      return (a.ts - b.ts) || String(a.pid).localeCompare(String(b.pid));
+    });
+  }
+
+  /** Сколько человек реально сидит за столами (лист ожидания не считаем). */
+  function seatedCount(arr) {
+    return arr.filter(function (r) { return r.status !== "wait"; }).length;
+  }
+
+  function waitingList(arr) {
+    return arr.filter(function (r) { return r.status === "wait"; });
+  }
+
+  /** Свободный стол и место. Занятыми считаем только тех, кто сидит. */
+  function assignSeat(tour, arr) {
+    arr = arr || regsToArray(tour.regs);
+    var spt = tour.seatsPerTable || 9;
+    var tables = Math.max(1, Math.ceil((tour.max || spt) / spt));
+    var taken = {};
+    arr.forEach(function (r) {
+      if (r.status !== "wait" && r.table) taken[r.table + "-" + r.seat] = true;
+    });
+    var free = [];
+    for (var tb = 1; tb <= tables; tb++) {
+      for (var s = 1; s <= spt; s++) {
+        if (!taken[tb + "-" + s]) free.push({ table: tb, seat: s });
+      }
+    }
+    return free.length ? free[Math.floor(Math.random() * free.length)]
+                       : { table: null, seat: null };
+  }
+
+  /**
+   * Что произойдёт, если игрок pid нажмёт «Записаться».
+   * Ничего не пишет — только считает. Запись делает store.registerMe.
+   */
+  function decideRegistration(tour, pid) {
+    if (!tour) return { ok: false, reason: "missing" };
+    if (tour.status !== "reg") return { ok: false, reason: "closed" };
+
+    var arr = regsToArray(tour.regs);
+    var mine = arr.filter(function (r) { return r.pid === pid; })[0];
+    if (mine) {
+      return { ok: false, reason: "already", status: mine.status,
+               table: mine.table || null, seat: mine.seat || null };
+    }
+
+    var max = +tour.max || 0;
+    if (seatedCount(arr) >= max) {
+      return { ok: true, status: "wait", table: null, seat: null,
+               place: waitingList(arr).length + 1 };
+    }
+    var s = assignSeat(tour, arr);
+    return { ok: true, status: "reg", table: s.table, seat: s.seat };
+  }
+
+  /** Первый в листе ожидания (по времени записи). */
+  function nextInLine(tour) {
+    return waitingList(regsToArray(tour.regs))[0] || null;
+  }
+
+  /**
+   * Может ли игрок pid сам занять освободившееся место.
+   * Правила базы не дают трогать чужие записи, поэтому продвижение из очереди
+   * делает сам игрок, когда открывает приложение.
+   */
+  function canPromote(tour, pid) {
+    if (!tour || tour.status !== "reg") return false;
+    var arr = regsToArray(tour.regs);
+    var mine = arr.filter(function (r) { return r.pid === pid; })[0];
+    if (!mine || mine.status !== "wait") return false;
+    if (seatedCount(arr) >= (+tour.max || 0)) return false;
+    var first = waitingList(arr)[0];
+    return !!first && first.pid === pid;
+  }
+
+  /** Моё место в очереди: 1, 2, 3... или null. */
+  function myWaitPlace(tour, pid) {
+    var wl = waitingList(regsToArray(tour.regs));
+    for (var i = 0; i < wl.length; i++) if (wl[i].pid === pid) return i + 1;
+    return null;
+  }
+
+  return {
+    regsToArray: regsToArray,
+    seatedCount: seatedCount,
+    waitingList: waitingList,
+    assignSeat: assignSeat,
+    decideRegistration: decideRegistration,
+    nextInLine: nextInLine,
+    canPromote: canPromote,
+    myWaitPlace: myWaitPlace
+  };
+})();
+</script>
 
 <script type="text/babel">
 const {useState} = React;
@@ -239,12 +359,27 @@ const _clean=(o)=>JSON.parse(JSON.stringify(o));
 const _normTour=(t)=>({...t, regs: PClub.regsToArray(t.regs),
                        results: t.results ? (Array.isArray(t.results)?t.results.filter(Boolean):Object.values(t.results)) : []});
 
+/* Отказы базы раньше уходили только в консоль: кнопка нажималась, ничего
+   не происходило, и понять причину было невозможно. Теперь любая ошибка
+   всплывает сообщением — App подставляет сюда свой показ уведомлений. */
+let _onError=(msg)=>console.error(msg);
+const _fail=(what)=>(e)=>{
+  const m = e && e.code==="PERMISSION_DENIED"
+    ? what+": база отклонила запись. Проверьте, что ваш uid есть в разделе admins и правила опубликованы."
+    : what+": "+((e&&e.message)||"нет связи");
+  _onError(m);
+  console.error(m, e);
+  throw e;
+};
+
 const store={
+  setErrorHandler(fn){ _onError=fn; },
+
   on(c,cb){
     const wrap = c==="tournaments" ? (arr)=>cb(arr.map(_normTour)) : cb;
     if(FB_ON){ _db.ref(c).on("value",
       s=>{const v=s.val()||{};wrap(Object.entries(v).map(([id,x])=>({id,...x})));},
-      e=>console.error("Нет доступа к "+c+":",e.message)); }
+      e=>_onError("Не удалось прочитать «"+c+"»: "+e.message)); }
     else { _local.subs[c].push((arr)=>wrap(arr)); wrap(_arr(c)); }
   },
 
@@ -256,15 +391,20 @@ const store={
     if(c==="tournaments"){
       const {regs,...rest}=data;
       data=rest;
-      if(FB_ON){ _db.ref("tournaments/"+id).update(data).catch(e=>console.error("save:",e.message)); return id; }
+      // числа из формы могли прийти строками — база их не примет
+      if(data.max!=null) data.max=+data.max||0;
+      if(data.seatsPerTable!=null) data.seatsPerTable=+data.seatsPerTable||9;
+      if(!data.max){ _onError("Укажите число мест больше нуля"); return id; }
+      if(!data.name){ _onError("У турнира должно быть название"); return id; }
+      if(FB_ON){ _db.ref("tournaments/"+id).update(data).catch(_fail("Сохранение турнира")); return id; }
       _local[c][id]={..._local[c][id],...data}; _emit(c); return id;
     }
-    if(FB_ON) _db.ref(c+"/"+id).update(data).catch(e=>console.error("save:",e.message));
+    if(FB_ON) _db.ref(c+"/"+id).update(data).catch(_fail("Сохранение игрока"));
     else { _local[c][id]={..._local[c][id],...data}; _emit(c); }
     return id;
   },
 
-  del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove(); else { delete _local[c][id]; _emit(c); } },
+  del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove().catch(_fail("Удаление")); else { delete _local[c][id]; _emit(c); } },
 
   /* ---------- точечная работа с записями на турнир ---------- */
 
@@ -275,11 +415,11 @@ const store={
     return t?t.regs:null;
   },
   updReg(tid,pid,patch){
-    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).update(_clean(patch)).catch(e=>console.error("updReg:",e.message));
+    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).update(_clean(patch)).catch(_fail("Изменение записи"));
     const r=this._regs(tid); if(r&&r[pid]) Object.assign(r[pid],patch); _emit("tournaments"); return Promise.resolve();
   },
   setReg(tid,pid,rec){
-    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).set(_clean({...rec,pid})).catch(e=>console.error("setReg:",e.message));
+    if(FB_ON) return _db.ref("tournaments/"+tid+"/regs/"+pid).set(_clean({...rec,pid})).catch(_fail("Добавление игрока"));
     const r=this._regs(tid); if(r) r[pid]={...rec,pid}; _emit("tournaments"); return Promise.resolve();
   },
   delReg(tid,pid){
@@ -294,7 +434,7 @@ const store={
         if(patch===null){ upd[pid]=null; return; }
         Object.entries(_clean(patch)).forEach(([k,v])=>{ upd[pid+"/"+k]=v; });
       });
-      return _db.ref("tournaments/"+tid+"/regs").update(upd).catch(e=>console.error("updRegs:",e.message));
+      return _db.ref("tournaments/"+tid+"/regs").update(upd).catch(_fail("Изменение записей"));
     }
     const r=this._regs(tid);
     if(r) Object.entries(map).forEach(([pid,patch])=>{ if(patch===null) delete r[pid]; else if(r[pid]) Object.assign(r[pid],patch); });
@@ -366,7 +506,7 @@ const seedTours=()=>[
 
 const STATUS={reg:{l:"Запись",c:"reg"}, live:{l:"Идёт",c:"live"}, done:{l:"Завершён",c:"done"}};
 const fmtDate=d=>{const[y,m,dd]=d.split("-");const mm=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][+m-1];return `${+dd} ${mm} ${y}`;};
-/* рассадка живёт в paradise-core.js — общая с приложением игрока и покрыта тестами */
+/* рассадка живёт в блоке PClub выше — общая с приложением игрока и покрыта тестами */
 const assignSeat=(t)=>PClub.assignSeat(t);
 
 function Uname({p}){return <div className="uwrap"><span className="av">{UserIcon}</span><span>{p?p.username:"—"}</span></div>;}
@@ -1078,8 +1218,11 @@ function App({user}){
   const [tours,setTours]=useState([]);
   const [players,setPlayers]=useState([]);
   const [toast,setToast]=useState(null);
+  const [error,setError]=useState(null);
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(null),2200);};
   React.useEffect(()=>{
+    // ошибки базы больше не молчат — показываем их полосой сверху
+    store.setErrorHandler((m)=>setError(m));
     store.on("players",setPlayers);
     store.on("tournaments",setTours);
   },[]);
@@ -1115,6 +1258,12 @@ function App({user}){
         </div>
       </aside>
       <main className="main">
+        {error && <div style={{background:"rgba(224,97,109,.14)",border:"1px solid rgba(224,97,109,.4)",
+                               color:"#f0a0a8",borderRadius:12,padding:"12px 16px",marginBottom:16,
+                               display:"flex",alignItems:"center",gap:12,fontSize:14}}>
+          <span style={{flex:1}}>{error}</span>
+          <span onClick={()=>setError(null)} style={{cursor:"pointer",opacity:.7,fontSize:18,lineHeight:1}}>×</span>
+        </div>}
         {page==="tours" && <Tournaments tours={tours} saveTour={saveTour} delTour={delTour} players={players}/>}
         {page==="live" && <LiveControl tours={tours} players={players} saveTour={saveTour} savePlayer={savePlayer} toast={showToast}/>}
         {page==="regs" && <Registrations tours={tours} saveTour={saveTour} players={players} toast={showToast}/>}
