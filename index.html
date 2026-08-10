@@ -613,6 +613,23 @@ const store={
       .catch(e=>{ console.error("save "+c+":",e.message); throw e; });
   },
 
+  /** Привязать карточку игрока к текущему устройству. */
+  bindMe(pid){
+    if(!FB_ON || !AUTH_UID) return Promise.resolve();
+    return _db.ref("players/"+pid+"/uid").set(AUTH_UID)
+      .catch(e=>console.error("Не удалось привязать профиль:",e.message));
+  },
+
+  /* Привязка ставится асинхронно, а игрок может нажать «Записаться» раньше.
+     Поэтому при отказе по правам один раз перепривязываемся и повторяем. */
+  _retryAfterBind(pid, attempt){
+    return attempt().catch(e=>{
+      const code=(e&&(e.code||e.message)||"").toString().toLowerCase();
+      if(code.indexOf("permission")<0 && code.indexOf("denied")<0) throw e;
+      return this.bindMe(pid).then(attempt);
+    });
+  },
+
   /* ---------- запись на турнир ---------- */
 
   /** Записаться. Возвращает {status:"reg"|"wait", table, seat, place} либо кидает ошибку. */
@@ -633,9 +650,10 @@ const store={
     }
     /* Транзакция на СВОЁЙ записи: если параллельно записались с другого устройства,
        второй раз не продублируем. */
-    return _db.ref("tournaments/"+tour.id+"/regs/"+pid)
+    const attempt=()=>_db.ref("tournaments/"+tour.id+"/regs/"+pid)
       .transaction(cur => cur ? undefined : rec)
       .then(res => res.committed ? d : {ok:false, reason:"already", ...(res.snapshot.val()||{})});
+    return this._retryAfterBind(pid, attempt);
   },
 
   /** Отменить свою запись. */
@@ -645,7 +663,8 @@ const store={
       if(t&&t.regs){ if(Array.isArray(t.regs)) t.regs=t.regs.filter(r=>r.pid!==pid); else delete t.regs[pid]; _emit("tournaments"); }
       return Promise.resolve();
     }
-    return _db.ref("tournaments/"+tour.id+"/regs/"+pid).remove();
+    return this._retryAfterBind(pid,
+      ()=>_db.ref("tournaments/"+tour.id+"/regs/"+pid).remove());
   },
 
   /** Занять освободившееся место, если я первый в листе ожидания. */
@@ -1346,8 +1365,8 @@ function ProfileSettings({onClose,onSaved}){
 function regErrText(e,action){
   const code=(e&&(e.code||e.message)||"").toString().toLowerCase();
   if(code.indexOf("permission")>=0 || code.indexOf("denied")>=0){
-    return "Профиль привязан к другому устройству, поэтому не получается "+action+". "+
-           "Попросите организатора сбросить привязку в админке — это займёт секунду.";
+    return "База не приняла изменение. Закройте и откройте приложение — "+
+           "профиль перепривяжется к этому устройству. Если не поможет, напишите организатору.";
   }
   return "Не удалось "+action+": "+((e&&e.message)||"нет связи");
 }
@@ -1538,12 +1557,13 @@ function App(){
       }
       /* Привязка карточки к устройству.
          Правила пускают игрока к его записям только если players/<id>/uid
-         совпадает с текущим входом. У карточек, созданных до появления правил,
-         этого поля нет — дописываем его при первом заходе, иначе запись
-         на турнир будет отклоняться с permission_denied. */
-      if(!claimed && me && !me.uid && store.uid()){
+         совпадает с текущим входом. Вход анонимный, а значит свой на каждом
+         устройстве: сменил телефон — привязка не совпала. Поэтому просто
+         перепривязываем карточку к текущему устройству. Подменить чужую
+         привязку правила не дают: записать туда можно только свой uid. */
+      if(!claimed && me && store.uid() && me.uid!==store.uid()){
         claimed=true;
-        store.save("players",{id:MY_ID, username:me.username||IDENTITY.name});
+        store.bindMe(MY_ID);
       }
       /* Подтягиваем аватар из Telegram, если своего ещё нет.
          Свой загруженный аватар не перезатираем — он всегда в приоритете. */
