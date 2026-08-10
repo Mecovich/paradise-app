@@ -1089,10 +1089,11 @@ function RulesSheet({topic,onClose}){
   );
 }
 
-function Profile({history=[], active=[]}){
+/* Шторку профиля рендерит App, а не этот компонент: .screen создаёт свой
+   контекст наложения, и изнутри него шторка всегда оказывалась под нижним меню. */
+function Profile({history=[], active=[], onSettings}){
   const [htab,setHtab]=useState("past");
-  const [settings,setSettings]=useState(false);
-  const [,setTick]=useState(0);
+  const setSettings=onSettings;
   const pct=(ME.pts+ME.toGold)>0?Math.round(ME.pts/(ME.pts+ME.toGold)*100):0;
   const has=history.length>0;
   const a=analytics(history);
@@ -1216,7 +1217,6 @@ function Profile({history=[], active=[]}){
         )) : <div className="hempty"><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Нет активных записей</div></div>
       )}
 
-      {settings && <ProfileSettings onClose={()=>setSettings(false)} onSaved={()=>setTick(t=>t+1)}/>}
     </div>
   );
 }
@@ -1471,6 +1471,8 @@ function NeedTelegram(){
 function App(){
   const [agreed,setAgreed]=useState(false);
   const [tab,setTab]=useState("home");
+  const [settings,setSettings]=useState(false);
+  const [,setTick]=useState(0);
   const [reg,setReg]=useState(null);
   const [watch,setWatch]=useState(null);
   const [standings,setStandings]=useState(null);
@@ -1598,7 +1600,7 @@ function App(){
       {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={showWatch} go={setTab}/>}
       {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={showWatch} onResults={showResults}/>}
       {tab==="rate" && <Rating players={players}/>}
-      {tab==="prof" && <Profile history={myHistory} active={myActive}/>}
+      {tab==="prof" && <Profile history={myHistory} active={myActive} onSettings={setSettings}/>}
       <div className="navwrap">
         <div className="nav">
           <div className="nav-ind" style={{transform:`translateX(${nav.findIndex(n=>n.k===tab)*100}%)`}}></div>
@@ -1611,6 +1613,7 @@ function App(){
       </div>
       {reg && <RegSheet t={(open.concat(live,past).find(c=>c.id===reg.id))||reg}
                         onRegister={registerMe} onCancel={cancelMe} onClose={()=>setReg(null)}/>}
+      {settings && <ProfileSettings onClose={()=>setSettings(false)} onSaved={()=>setTick(t=>t+1)}/>}
       {watch && <LiveSheet data={watch} onClose={()=>setWatch(null)}/>}
       {standings && <ResultsSheet data={standings} onClose={()=>setStandings(null)}/>}
     </div>
