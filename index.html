@@ -962,11 +962,23 @@ function Rating({players}){
 }
 
 /* points-over-tournaments line chart, built from history */
+/* Верхняя граница оси. Раньше округляли всегда до сотен: одна игра на 10 очков
+   давала шкалу 0–100, и точка прилипала к нижнему краю. Теперь шаг подбирается
+   под сами данные, с запасом сверху, чтобы точка не упиралась в потолок. */
+function niceCeil(v){
+  const target=v*1.25;
+  // шаги подобраны так, чтобы половина каждого была целой — её показываем
+  // средней подписью на оси
+  const steps=[10,20,50,100,150,200,250,500,750,1000,1500,2000,2500,5000,10000];
+  for(let i=0;i<steps.length;i++) if(target<=steps[i]) return steps[i];
+  return Math.ceil(target/5000)*5000;
+}
+
 function PointsChart({data}){
   const W=320,H=150,PL=34,PR=12,PT=16,PB=18;
   const n=data.length;
   const max=Math.max(...data.map(d=>d.pts),1);
-  const nice=Math.ceil(max/100)*100;
+  const nice=niceCeil(max);
   const X=i=> n===1 ? (PL+(W-PL-PR)/2) : PL+i*(W-PL-PR)/(n-1);
   const Y=v=> PT+(1-v/nice)*(H-PT-PB);
   const pts=data.map((d,i)=>[X(i),Y(d.pts)]);
@@ -985,14 +997,21 @@ function PointsChart({data}){
           <line key={i} x1={PL} x2={W-PR} y1={PT+g*(H-PT-PB)} y2={PT+g*(H-PT-PB)} stroke="rgba(255,255,255,.06)" strokeWidth="1"/>
         ))}
         <text x={PL-8} y={PT+4} fontSize="10" fill="#7c6469" textAnchor="end">{nice}</text>
+        <text x={PL-8} y={PT+(H-PT-PB)/2+4} fontSize="10" fill="#7c6469" textAnchor="end">{Math.round(nice/2)}</text>
         <text x={PL-8} y={H-PB+4} fontSize="10" fill="#7c6469" textAnchor="end">0</text>
-        <polygon points={area} fill="url(#area)"/>
-        <polyline className="chartline" pathLength="1" points={line} fill="none" stroke="#34d29b" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round"/>
+        {/* линия и заливка имеют смысл только когда точек больше одной */}
+        {n>1 && <polygon points={area} fill="url(#area)"/>}
+        {n>1 && <polyline className="chartline" pathLength="1" points={line} fill="none" stroke="#34d29b" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round"/>}
         {pts.map((p,i)=>(
           <circle key={i} cx={p[0]} cy={p[1]} r="4.5"
             fill={i===0?"#e7c977":i===n-1?"#8fb0a6":"#34d29b"}
             stroke="#08150f" strokeWidth="2"/>
         ))}
+        {/* подписываем последний результат — иначе по точке не прочитать значение */}
+        <text x={pts[n-1][0]} y={Math.max(PT+10,pts[n-1][1]-10)} fontSize="11" fontWeight="700"
+              fill="#e7c977" textAnchor={n===1?"middle":"end"}>
+          {data[n-1].pts>0?"+"+data[n-1].pts:"0"}
+        </text>
       </svg>
     </div>
   );

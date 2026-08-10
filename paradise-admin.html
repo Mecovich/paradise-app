@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Paradise · Админка</title>
+<!-- Чтобы админку можно было открыть прямо в боте как Mini App.
+     В обычном браузере скрипт просто ничего не делает. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -207,6 +210,64 @@ input.mini:focus{border-color:var(--gold-dim);}
   .main{padding:22px 16px 60px;}
   .grid2,.grid3{grid-template-columns:1fr;}
 }
+
+/* ================= Телефон =================
+   Организатор ведёт турнир с телефона: отмечает выбывших, докупки, приход.
+   Боковое меню уезжает в нижнюю панель, таблицы прокручиваются вбок,
+   модалки становятся шторками снизу, кнопки — крупнее под палец. */
+.m-top{display:none;}
+
+@media(max-width:600px){
+  .layout{flex-direction:column;}
+
+  /* меню — нижняя панель, как в приложении игрока */
+  .side{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%;height:auto;
+    flex-direction:row;align-items:stretch;border-right:none;border-top:1px solid var(--line);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:50;}
+  .brand{display:none;}
+  .side .who{display:none;}
+  .nav{flex-direction:row;width:100%;gap:2px;margin:0;}
+  .nav a{flex:1;flex-direction:column;justify-content:center;gap:4px;padding:8px 2px;
+    border-radius:10px;text-align:center;}
+  .nav a span{display:block;font-size:9.5px;line-height:1.15;font-weight:600;}
+  .nav a svg{width:20px;height:20px;}
+
+  /* шапка страницы: кто вошёл и выход — в меню их больше нет */
+  .m-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;
+    font-size:12px;color:var(--muted2);}
+  .m-top b{color:var(--txt);font-weight:600;}
+  .m-top .out{margin-left:auto;color:var(--crimson);font-weight:600;cursor:pointer;}
+
+  .main{padding:16px 12px calc(86px + env(safe-area-inset-bottom));max-width:none;}
+  .head{flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+  .head h1{font-size:21px;}
+  .head .sp{flex-basis:100%;height:0;}
+
+  /* таблицы не влезают по ширине — даём прокрутку вбок */
+  .panel{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tbl{min-width:540px;}
+  .tbl th{padding:11px 12px;}
+  .tbl td{padding:12px;font-size:13.5px;}
+
+  /* модалки — шторкой снизу */
+  .ov{align-items:flex-end;padding:0;}
+  .modal{max-width:none;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));}
+
+  /* ведение турнира */
+  .lc-stats{grid-template-columns:1fr 1fr;gap:8px;}
+  .lc-row{flex-wrap:wrap;gap:8px;padding:12px;}
+  .lc-row .sp{flex-basis:100%;height:0;}
+  .lc-row .btn.sm{flex:1;justify-content:center;padding:10px 12px;font-size:13px;}
+  .seatmap{grid-template-columns:1fr;}
+  .selbar{gap:8px;}
+  .selbar .inp{flex:1;min-width:0;}
+
+  /* пальцу нужно во что попадать */
+  .btn{padding:11px 16px;}
+  .btn.sm{padding:9px 12px;}
+  .togg{transform:scale(1.15);}
+}
 </style>
 </head>
 <body>
@@ -337,6 +398,19 @@ window.PClub = (function () {
 <script type="text/babel">
 const {useState} = React;
 const uid=()=>Math.random().toString(36).slice(2,9);
+
+/* Если админку открыли внутри Telegram — разворачиваем на весь экран
+   и красим шапку под тему приложения. Вне Telegram ничего не происходит. */
+const TG = window.Telegram && window.Telegram.WebApp;
+if(TG){
+  try{
+    TG.ready(); TG.expand();
+    TG.setHeaderColor && TG.setHeaderColor("#08150f");
+    TG.setBackgroundColor && TG.setBackgroundColor("#08150f");
+    TG.enableClosingConfirmation && TG.enableClosingConfirmation();
+  }catch(e){}
+}
+const haptic=(s="light")=>{try{TG&&TG.HapticFeedback&&TG.HapticFeedback.impactOccurred(s);}catch(e){}};
 
 /* ================= Общий store (Firebase ↔ локальный fallback) ================= */
 /* Вставь конфиг из Firebase (Project settings → SDK setup → Config). До этого — локальные демо-данные. */
@@ -899,6 +973,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const pById=id=>players.find(p=>p.id===id);
   const nm=r=>{const p=pById(r.pid);return p?p.username:"—";};
   const [koFor,setKoFor]=useState(null);   // pid выбывающего (для выбора того, кто выбил)
+  const [koQuery,setKoQuery]=useState(""); // поиск по нику в списке — на телефоне без него никак
   const [rebuyFor,setRebuyFor]=useState(null); // pid для докупки
   const [billOpen,setBillOpen]=useState(false);
 
@@ -912,7 +987,10 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const outList=regs.filter(r=>r.out).sort((a,b)=>(a.place||0)-(b.place||0));
   const total=regs.length;
   const buyNum=parseInt(String((t&&t.buyin)||"").replace(/\D/g,""))||0;
-  const pool=buyNum*total+((t&&t.rebuyTotal)||0);
+  /* Клуб играет не на деньги, поэтому «призового фонда» нет.
+     Показываем то, что организатору реально нужно: сколько собрано с игроков
+     за входные и докупки — та же сумма, что в разделе «Счёт». */
+  const collected=regs.reduce((s,r)=>s+buyNum+(r.spent||0),0);
   const level=Math.max(0,Math.min(BLINDS.length-1,(t&&t.level)||0));
   const [sb,bb]=BLINDS[level];
   const ko=t?koType(t.type):null;
@@ -921,12 +999,13 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const start=()=>saveTour({...t,status:"live"});
   /* Всё, что меняет одного игрока, пишем прямо в его запись — так параллельные
      действия (выбывание одного и докупка другого) не затирают друг друга. */
-  const revive=(pid)=>store.updReg(t.id,pid,{out:false,place:null});
-  // выбывание: если баунти/мистери — сначала выбираем, кто выбил
-  const eliminate=(pid)=>{ if(ko){ setKoFor(pid); } else { doEliminate(pid,null); } };
+  const revive=(pid)=>store.updReg(t.id,pid,{out:false,place:null,by:null});
+  /* Спрашиваем «кто выбил» на любом турнире, а не только на баунти:
+     очки за нокаут идут только там, но знать, кто кого выбил, полезно всегда. */
+  const eliminate=(pid)=>setKoFor(pid);
   const doEliminate=(pid,killerId)=>{
     const place=inPlay.length;
-    store.updReg(t.id,pid,{out:true,place});
+    store.updReg(t.id,pid,{out:true,place,by:killerId||null});
     let award=0, msg="";
     if(killerId && ko==="bounty"){ award=2; msg="+2 за нокаут"; }
     if(killerId && ko==="mystery"){
@@ -1016,7 +1095,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
           <div className="lc-stat"><div className="v">{total}</div><div className="l">Всего</div></div>
           <div className="lc-stat"><div className="v e">{inPlay.length}</div><div className="l">В игре</div></div>
           <div className="lc-stat"><div className="v m">{outList.length}</div><div className="l">Выбыло</div></div>
-          <div className="lc-stat"><div className="v g">{pool?pool.toLocaleString("ru")+" ₽":"—"}</div><div className="l">Призовой фонд</div></div>
+          <div className="lc-stat"><div className="v g">{collected.toLocaleString("ru")} ₽</div><div className="l">Собрано с игроков</div></div>
         </div>
 
         <div className="lc-blinds">
@@ -1053,6 +1132,9 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
                 <div className="plc" style={{color:r.place<=3?"var(--gold)":"var(--muted2)"}}>#{r.place}</div>
                 <div>
                   <div className="nm">{nm(r)}</div>
+                  {r.by && <div style={{fontSize:11,marginTop:2,color:"var(--crimson)"}}>
+                    выбил {nm({pid:r.by})}
+                  </div>}
                   <div style={{fontSize:11,marginTop:2}}>
                     <span style={{color:"var(--gold)",fontWeight:700}}>к оплате {billOf(r).total.toLocaleString("ru")}₽</span>
                     <span style={{color:"var(--muted2)"}}>  ·  {billOf(r).text}</span>
@@ -1066,18 +1148,28 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
         </div>
       </> : <div className="panel"><div className="empty">Нет активных турниров. Создайте или откройте запись.</div></div>}
 
-      {koFor && <div className="ov" onClick={()=>setKoFor(null)}>
+      {koFor && <div className="ov" onClick={()=>{setKoFor(null);setKoQuery("");}}>
         <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
           <h3>Кто выбил игрока?</h3>
-          <div className="msub">Выбыл: {nm({pid:koFor})} · {t.type} {ko==="mystery"?"· тянем конверт":"· +2 очка"}</div>
+          <div className="msub">Выбыл: {nm({pid:koFor})} · {t.type}
+            {ko==="mystery" ? " · тянем конверт" : ko==="bounty" ? " · +2 очка выбившему" : " · очки за нокаут не начисляются"}
+          </div>
+          {inPlay.length>6 && <input className="inp" placeholder="Поиск по нику…" autoFocus
+            value={koQuery} onChange={e=>setKoQuery(e.target.value)}
+            style={{width:"100%",marginBottom:10}}/>}
           <div style={{maxHeight:"46vh",overflow:"auto",marginTop:6}}>
-            {inPlay.filter(r=>r.pid!==koFor).map(r=>(
-              <div key={r.pid} className="lc-row" style={{cursor:"pointer"}} onClick={()=>doEliminate(koFor,r.pid)}>
+            {inPlay.filter(r=>r.pid!==koFor)
+                   .filter(r=>nm(r).toLowerCase().includes(koQuery.trim().toLowerCase()))
+                   .map(r=>(
+              <div key={r.pid} className="lc-row" style={{cursor:"pointer"}}
+                   onClick={()=>{haptic("medium");doEliminate(koFor,r.pid);setKoQuery("");}}>
                 <span className="av">{UserIcon}</span><div className="nm">{nm(r)}</div>
               </div>
             ))}
+            {!inPlay.filter(r=>r.pid!==koFor).some(r=>nm(r).toLowerCase().includes(koQuery.trim().toLowerCase()))
+              && <div className="lc-empty">Никого не нашлось</div>}
           </div>
-          <div className="mfoot"><button className="btn ghost" onClick={()=>doEliminate(koFor,null)}>Без нокаута</button><button className="btn ghost" onClick={()=>setKoFor(null)}>Отмена</button></div>
+          <div className="mfoot"><button className="btn ghost" onClick={()=>{doEliminate(koFor,null);setKoQuery("");}}>Без нокаута</button><button className="btn ghost" onClick={()=>{setKoFor(null);setKoQuery("");}}>Отмена</button></div>
         </div>
       </div>}
 
@@ -1258,6 +1350,12 @@ function App({user}){
         </div>
       </aside>
       <main className="main">
+        {/* видна только на телефоне: в нижней панели нет места под профиль */}
+        <div className="m-top">
+          <Logo size={15} color="#e7c977"/>
+          <b>{user&&user.email?user.email.split("@")[0]:"Админ"}</b>
+          {FB_ON && <span className="out" onClick={()=>firebase.auth().signOut()}>Выйти</span>}
+        </div>
         {error && <div style={{background:"rgba(224,97,109,.14)",border:"1px solid rgba(224,97,109,.4)",
                                color:"#f0a0a8",borderRadius:12,padding:"12px 16px",marginBottom:16,
                                display:"flex",alignItems:"center",gap:12,fontSize:14}}>
