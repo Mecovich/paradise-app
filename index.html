@@ -600,13 +600,17 @@ const store={
 
   /* Пишем только карточку игрока. Турниры из приложения не сохраняем —
      правила базы этого и не разрешат, турнирами управляет админка. */
-  save(c,item){
+  save(c,item){ this.saveAsync(c,item).catch(()=>{}); return item.id; },
+
+  /** То же, но возвращает промис — чтобы показать игроку, если база отказала. */
+  saveAsync(c,item){
     const id=item.id||(FB_ON?_db.ref(c).push().key:uid());
     const data=_clean({...item,id});
     if(c==="players" && AUTH_UID) data.uid=AUTH_UID;
-    if(FB_ON) _db.ref(c+"/"+id).update(data).catch(e=>console.error("save "+c+":",e.message));
-    else { _local[c][id]={..._local[c][id],...data}; _emit(c); }
-    return id;
+    if(!FB_ON){ _local[c][id]={..._local[c][id],...data}; _emit(c); return Promise.resolve(id); }
+    return _db.ref(c+"/"+id).update(data)
+      .then(()=>id)
+      .catch(e=>{ console.error("save "+c+":",e.message); throw e; });
   },
 
   /* ---------- запись на турнир ---------- */
@@ -1265,11 +1269,22 @@ function ProfileSettings({onClose,onSaved}){
   const save=()=>{
     const n=nick.trim();
     const uname=n?(n.startsWith("@")?n:"@"+n):IDENTITY.name;
-    IDENTITY.name=uname; IDENTITY.photo=photo||null;
-    ME.name=uname; ME.photo=photo||null;
-    // обновляем запись игрока в общих данных (ник появится в админке)
-    store.save("players",{id:MY_ID, username:uname, tier:(ME.tier||"silver").toLowerCase(), pts:ME.pts||0, games:ME.games||0, bonus:ME.bonus||0, photo:ME.photo||null});
-    onSaved(); onClose();
+    setBusy(true); setErr("");
+    /* Пишем только то, что игрок реально меняет. Очки, уровень и число игр
+       не трогаем — их всё равно меняет только админ, а лишние поля в запросе
+       раньше приводили к отказу базы. */
+    store.saveAsync("players",{id:MY_ID, username:uname, photo:photo||null})
+      .then(()=>{
+        IDENTITY.name=uname; IDENTITY.photo=photo||null;
+        ME.name=uname; ME.photo=photo||null;
+        onSaved(); onClose();
+      })
+      .catch(e=>{
+        setBusy(false);
+        setErr(e && e.code==="PERMISSION_DENIED"
+          ? "База отклонила изменение. Скорее всего профиль привязан к другому устройству — напишите организатору."
+          : "Не удалось сохранить: "+((e&&e.message)||"нет связи"));
+      });
   };
   return (
     <div className="overlay" onClick={onClose}>
@@ -1297,6 +1312,7 @@ function ProfileSettings({onClose,onSaved}){
             <div className="hint">JPG, PNG, WEBP, GIF. До 10 МБ. Обрежется в квадрат 512×512.</div>
           </div>
         </div>
+        {err && <div className="hint" style={{color:"var(--coral)",marginTop:10}}>{err}</div>}
         <div className="set-foot">
           <button className="btn gh" onClick={onClose}>Отмена</button>
           <button className="btn g" onClick={save} disabled={busy}>Сохранить</button>
