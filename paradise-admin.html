@@ -480,6 +480,13 @@ const store={
 
   del(c,id){ if(FB_ON) _db.ref(c+"/"+id).remove().catch(_fail("Удаление")); else { delete _local[c][id]; _emit(c); } },
 
+  /** Точечно изменить одно поле игрока (null — удалить поле). */
+  updPlayerField(pid,field,value){
+    if(FB_ON) return _db.ref("players/"+pid+"/"+field).set(value).catch(_fail("Изменение профиля"));
+    if(_local.players[pid]){ if(value===null) delete _local.players[pid][field]; else _local.players[pid][field]=value; _emit("players"); }
+    return Promise.resolve();
+  },
+
   /* ---------- точечная работа с записями на турнир ---------- */
 
   _regs(tid){
@@ -881,6 +888,14 @@ function Players({players,savePlayer,delPlayer,toast}){
   const upd=(id,k,v)=>{const p=players.find(x=>x.id===id); if(p) savePlayer({...p,[k]:v});};
   const add=(u)=>{savePlayer({username:u||"@username",tier:"silver",pts:0,games:0,bonus:0});setAddOpen(false);toast("Игрок добавлен");};
   const del=(id)=>delPlayer(id);
+  /* Профиль привязан к устройству через uid: правила пускают игрока только
+     к своей карточке. Сменил телефон — привязка не совпадает, и запись
+     на турнир отклоняется. Сброс позволяет привязаться заново. */
+  const unbind=(p)=>{
+    if(!confirm(`Открепить профиль ${p.username} от устройства?\n\nОчки и статистика останутся. Игрок привяжется заново при следующем входе.`)) return;
+    store.updPlayerField(p.id,"uid",null);
+    toast("Привязка сброшена");
+  };
   return (
     <div>
       <div className="head"><div><h1>Игроки и рейтинг</h1><div className="sub">Рейтинг, бонусные баллы и уровни</div></div>
@@ -905,11 +920,21 @@ function Players({players,savePlayer,delPlayer,toast}){
                     <option value="gold">Gold</option>
                   </select>
                 </td>
-                <td style={{textAlign:"right"}}><button className="btn danger sm" onClick={()=>del(p.id)}>{I.trash}</button></td>
+                <td style={{textAlign:"right",whiteSpace:"nowrap"}}>
+                  <button className="btn ghost sm" style={{marginRight:8}}
+                    title={p.uid?"Открепить профиль от устройства":"Профиль ни к чему не привязан"}
+                    disabled={!p.uid} onClick={()=>unbind(p)}>Сбросить привязку</button>
+                  <button className="btn danger sm" onClick={()=>del(p.id)}>{I.trash}</button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="hint" style={{margin:"10px 2px 0",color:"var(--muted2)",fontSize:12.5}}>
+        «Сбросить привязку» нужно, если игрок сменил телефон или переустановил Telegram
+        и получает ошибку при записи на турнир. После сброса профиль привяжется
+        к новому устройству при первом входе.
       </div>
       {addOpen && <AddPlayer onAdd={add} onClose={()=>setAddOpen(false)}/>}
       {bonusOpen && <BonusModal players={players} savePlayer={savePlayer} toast={toast} onClose={()=>setBonusOpen(false)}/>}

@@ -1341,6 +1341,17 @@ function ProfileSettings({onClose,onSaved}){
   );
 }
 
+/* Понятный текст вместо permission_denied: игроку это ни о чём не говорит,
+   а причина почти всегда одна — карточка привязана к другому устройству. */
+function regErrText(e,action){
+  const code=(e&&(e.code||e.message)||"").toString().toLowerCase();
+  if(code.indexOf("permission")>=0 || code.indexOf("denied")>=0){
+    return "Профиль привязан к другому устройству, поэтому не получается "+action+". "+
+           "Попросите организатора сбросить привязку в админке — это займёт секунду.";
+  }
+  return "Не удалось "+action+": "+((e&&e.message)||"нет связи");
+}
+
 function RegSheet({t,onRegister,onCancel,onClose}){
   const [phase,setPhase]=useState(t.myStatus?"mine":"form"); // form | mine | done | busy
   const [res,setRes]=useState(t.myStatus?{status:t.myStatus,table:t.myTable,seat:t.mySeat,place:t.myPlace}:null);
@@ -1350,13 +1361,13 @@ function RegSheet({t,onRegister,onCancel,onClose}){
     setPhase("busy"); setErr("");
     Promise.resolve(onRegister(t.id))
       .then(r=>{ setRes(r); setPhase("done"); })
-      .catch(e=>{ setErr(e.message||"Не удалось записаться"); setPhase("form"); });
+      .catch(e=>{ setErr(regErrText(e,"записаться")); setPhase("form"); });
   };
   const doCancel=()=>{
     setPhase("busy"); setErr("");
     Promise.resolve(onCancel(t.id))
       .then(()=>onClose())
-      .catch(e=>{ setErr(e.message||"Не удалось отменить"); setPhase("mine"); });
+      .catch(e=>{ setErr(regErrText(e,"отменить запись")); setPhase("mine"); });
   };
 
   const waiting = res && res.status==="wait";
@@ -1515,7 +1526,7 @@ function App(){
   const [players,setPlayers]=useState([]);
   React.useEffect(()=>{
     if(!MY_ID) return;
-    let created=false, photoSynced=false; // без флагов неудачная запись повторялась бы на каждом обновлении
+    let created=false, photoSynced=false, claimed=false; // без флагов неудачная запись повторялась бы на каждом обновлении
     store.on("players",(arr)=>{
       setPlayers(arr);
       const me=arr.find(p=>p.id===MY_ID);
@@ -1524,6 +1535,15 @@ function App(){
         created=true;
         store.save("players",{id:MY_ID, username:IDENTITY.name, tier:"silver", pts:0, games:0, bonus:0, photo:IDENTITY.photo||null});
         return;
+      }
+      /* Привязка карточки к устройству.
+         Правила пускают игрока к его записям только если players/<id>/uid
+         совпадает с текущим входом. У карточек, созданных до появления правил,
+         этого поля нет — дописываем его при первом заходе, иначе запись
+         на турнир будет отклоняться с permission_denied. */
+      if(!claimed && me && !me.uid && store.uid()){
+        claimed=true;
+        store.save("players",{id:MY_ID, username:me.username||IDENTITY.name});
       }
       /* Подтягиваем аватар из Telegram, если своего ещё нет.
          Свой загруженный аватар не перезатираем — он всегда в приоритете. */
