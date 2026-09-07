@@ -550,8 +550,8 @@ const I={
   copy:<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/></svg>,
 };
 /* ===== система рейтинга Paradise ===== */
-const PAYOUT={ reg:[10,5,3,2,1,1,0,0,0,0], china:[15,10,5,3,2,1,0,0] };
-const MYSTERY_POOL=[50,10,10,5,5,5,3,3,3,3,1,1,1,1,1,1,1,1,1,1]; // 50×1,10×2,5×3,3×4,1×10
+const PAYOUT={ reg:[100,50,30,20,10,10,0,0,0,0], china:[150,100,50,30,20,10,0,0] };
+const MYSTERY_POOL=[500,100,100,50,50,50,30,30,30,30,10,10,10,10,10,10,10,10,10,10]; // рейтинг ×10
 const TYPES={
   "Classic":        {payout:"reg",   stack:"30 000", max:18, spt:9, ko:null},
   "Freeroll":       {payout:"reg",   stack:"20 000", max:18, spt:9, ko:null, free:true},
@@ -595,8 +595,17 @@ function Uname({p}){return <div className="uwrap"><span className="av">{UserIcon
 /* ---------- Tournaments ---------- */
 function Tournaments({tours,saveTour,delTour,players}){
   const [edit,setEdit]=useState(null); // tournament obj or "new"
-  const blank={id:null,name:"CLASSIC",type:"Classic",date:"2026-08-01",time:"19:00",buyin:"1 000 ₽",stack:"30 000",max:18,seatsPerTable:9,status:"reg",banner:"",regs:[],results:[]};
-  const save=(t)=>{ saveTour(t); setEdit(null); };
+  const blank={id:null,name:"CLASSIC",type:"Classic",date:"2026-08-01",time:"19:00",buyin:"1 000 ₽",stack:"30 000",max:18,seatsPerTable:9,status:"reg",banner:"",description:"",ratingScaleVersion:2,regs:[],results:[]};
+  const save=(next)=>{
+    const prev=tours.find(t=>t.id===next.id);
+    if(prev&&prev.status!=="live"&&next.status==="live"){
+      const patch={};
+      (prev.regs||[]).forEach(r=>{patch[r.pid]={stack:0,out:false,place:null,by:null,startGranted:false};});
+      Promise.resolve(store.updRegs(prev.id,patch)).then(()=>{saveTour(next);setEdit(null);});
+      return;
+    }
+    saveTour(next); setEdit(null);
+  };
   const del=(id)=>delTour(id);
   const dup=(t)=>{ const {id,...rest}=t; saveTour({...rest, name:t.name+" (копия)", status:"reg", regs:[], results:[]}); };
   return (
@@ -668,6 +677,7 @@ function TourForm({init,onSave,onClose}){
           </div>
         </div>
         <div className="field"><label>Название</label><input className="inp" value={t.name} onChange={e=>set("name",e.target.value)}/></div>
+        <div className="field"><label>Описание турнира</label><textarea className="inp" rows="4" placeholder="Формат, уровни, условия ребаев и другая важная информация" value={t.description||""} onChange={e=>set("description",e.target.value)} style={{resize:"vertical",lineHeight:1.45}}></textarea></div>
         <div className="grid2">
           <div className="field"><label>Дата</label><input type="date" className="inp" value={t.date} onChange={e=>set("date",e.target.value)}/></div>
           <div className="field"><label>Время</label><input type="time" className="inp" value={t.time} onChange={e=>set("time",e.target.value)}/></div>
@@ -999,7 +1009,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const nm=r=>{const p=pById(r.pid);return p?p.username:"—";};
   const [koFor,setKoFor]=useState(null);   // pid выбывающего (для выбора того, кто выбил)
   const [koQuery,setKoQuery]=useState(""); // поиск по нику в списке — на телефоне без него никак
-  const [rebuyFor,setRebuyFor]=useState(null); // pid для докупки
+  const [rebuyFor,setRebuyFor]=useState(null); // pid для выдачи стека или докупки
   const [billOpen,setBillOpen]=useState(false);
 
   if(!tours.length) return (
@@ -1021,26 +1031,48 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
   const ko=t?koType(t.type):null;
 
   const setLevel=(d)=>saveTour({...t,level:Math.max(0,Math.min(BLINDS.length-1,level+d))});
-  const start=()=>saveTour({...t,status:"live"});
+  const start=()=>{
+    const patch={};
+    regs.forEach(r=>{ patch[r.pid]={stack:0,out:false,place:null,by:null,startGranted:false}; });
+    Promise.resolve(store.updRegs(t.id,patch)).then(()=>{
+      saveTour({...t,status:"live"});
+      toast("Турнир начат. Стеки игроков установлены в 0");
+    });
+  };
   /* Всё, что меняет одного игрока, пишем прямо в его запись — так параллельные
      действия (выбывание одного и докупка другого) не затирают друг друга. */
-  const revive=(pid)=>store.updReg(t.id,pid,{out:false,place:null,by:null});
+  const revive=(pid)=>{
+    store.updReg(t.id,pid,{out:false,place:null});
+    toast(ko==="bounty" ? "Игрок возвращён. Начисленное баунти сохранено" : "Игрок возвращён в турнир");
+  };
   /* Спрашиваем «кто выбил» на любом турнире, а не только на баунти:
      очки за нокаут идут только там, но знать, кто кого выбил, полезно всегда. */
   const eliminate=(pid)=>setKoFor(pid);
   const doEliminate=(pid,killerId)=>{
     const place=inPlay.length;
-    store.updReg(t.id,pid,{out:true,place,by:killerId||null});
+    store.updReg(t.id,pid,{out:true,place,by:killerId||null,stack:0});
     let award=0, msg="";
-    if(killerId && ko==="bounty"){ award=2; msg="+2 за нокаут"; }
+    if(killerId && ko==="bounty"){ award=20; msg="+20 за нокаут"; }
     if(killerId && ko==="mystery"){
-      const pool2=(t.mysteryPool&&t.mysteryPool.length)?t.mysteryPool.slice():MYSTERY_POOL.slice();
+      let pool2=(t.mysteryPool&&t.mysteryPool.length)?t.mysteryPool.slice():MYSTERY_POOL.slice();
+      if(t.mysteryPool&&t.mysteryPool.length&&t.ratingScaleVersion!==2) pool2=pool2.map(v=>v*10);
       const idx=Math.floor(Math.random()*pool2.length);
       award=pool2[idx]; msg="конверт +"+award; pool2.splice(idx,1);
-      saveTour({...t,mysteryPool:pool2});
+      saveTour({...t,mysteryPool:pool2,ratingScaleVersion:2});
     }
     if(killerId && award){ const kp=pById(killerId); if(kp){ savePlayer({...kp,pts:(kp.pts||0)+award}); toast(nm({pid:killerId})+": "+msg); } }
     setKoFor(null);
+  };
+  const grantStart=(pid)=>{
+    const base=parseInt(String(t.stack||"").replace(/\D/g,""))||0;
+    store.updReg(t.id,pid,{stack:base,startGranted:true});
+    setRebuyFor(null);
+    toast("Стартовый стек выдан: "+base.toLocaleString("ru"));
+  };
+  const resetStack=(pid)=>{
+    store.updReg(t.id,pid,{stack:0,startGranted:false});
+    setRebuyFor(null);
+    toast("Стек игрока сброшен в 0");
   };
   // докупки: малый ребай/большой ребай/аддон
   const rebuy=(pid,kind)=>{
@@ -1049,14 +1081,16 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
     const r=regs.find(x=>x.pid===pid)||{};
     const field={small:"rbSmall",big:"rbBig",addon:"rbAddon"}[kind];
     store.updReg(t.id,pid,{
-      stack:(r.stack||base)+opt.chips,
+      stack:(Number.isFinite(+r.stack)?+r.stack:0)+opt.chips,
       rebuys:(r.rebuys||0)+1,
       spent:(r.spent||0)+opt.rub,
+      ...(r.out?{out:false,place:null}:{}),
       [field]:(r[field]||0)+1              // считаем каждый вид отдельно — для счёта
     });
     saveTour({...t, rebuyTotal:((t.rebuyTotal||0)+opt.rub)});
     setRebuyFor(null);
-    toast((kind==="addon"?"Аддон":kind==="big"?"Большой ребай":"Малый ребай")+" +"+opt.chips.toLocaleString("ru"));
+    const action=(kind==="addon"?"Аддон":kind==="big"?"Большой ребай":"Малый ребай")+" +"+opt.chips.toLocaleString("ru");
+    toast(r.out ? action+". Игрок возвращён, баунти сохранено" : action);
   };
 
   /* Сколько игрок должен: входной плюс все докупки. На фрироллах входной 0. */
@@ -1085,6 +1119,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
       toast("Турнир завершён, очки за места начислены");
     });
   };
+  const rebuyRec=rebuyFor?(regs.find(r=>r.pid===rebuyFor)||{}):null;
 
   return (
     <div>
@@ -1110,7 +1145,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
           <div className="info">
             <div style={{flex:1}}>
               <div className="nm">{t.name}{t.type&&<span className="type-tag">{t.type}</span>}</div>
-              <div className="meta">{fmtDate(t.date)} · {t.time} · бай-ин {t.buyin}{ko?` · нокаут: ${ko==="bounty"?"+2":"конверт"}`:""}</div>
+              <div className="meta">{fmtDate(t.date)} · {t.time} · бай-ин {t.buyin}{ko?` · нокаут: ${ko==="bounty"?"+20":"конверт"}`:""}</div>
             </div>
             <span className={"chip "+STATUS[t.status].c}><span className="d"></span>{STATUS[t.status].l}</span>
           </div>
@@ -1138,14 +1173,14 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
                 <span className="av">{UserIcon}</span>
                 <div>
                   <div className="nm">{nm(r)}</div>
-                  {(r.table||r.stack||r.rebuys)&&<div style={{fontSize:11,color:"var(--muted2)",marginTop:2}}>{r.table?`Стол ${r.table} · м.${r.seat}`:""}{r.stack?`  ·  стек ${r.stack.toLocaleString("ru")}`:""}{r.rebuys?`  ·  ребаи ×${r.rebuys}`:""}</div>}
+                  <div style={{fontSize:11,color:"var(--muted2)",marginTop:2}}>{r.table?`Стол ${r.table} · м.${r.seat}  ·  `:""}стек {(Number.isFinite(+r.stack)?+r.stack:0).toLocaleString("ru")}{r.rebuys?`  ·  ребаи ×${r.rebuys}`:""}</div>
                   <div style={{fontSize:11,marginTop:3}}>
                     <span style={{color:"var(--gold)",fontWeight:700}}>к оплате {billOf(r).total.toLocaleString("ru")}₽</span>
                     <span style={{color:"var(--muted2)"}}>  ·  {billOf(r).text}</span>
                   </div>
                 </div>
                 <div className="sp"></div>
-                <button className="btn ghost sm" title="Докупка" onClick={()=>setRebuyFor(r.pid)} style={{marginRight:8}}>{I.plus}</button>
+                <button className="btn ghost sm" title="Стек и докупки" onClick={()=>setRebuyFor(r.pid)} style={{marginRight:8}}>{I.plus}{(Number.isFinite(+r.stack)?+r.stack:0)===0?"Выдать стек":"Стек"}</button>
                 <button className="btn danger sm" onClick={()=>eliminate(r.pid)}>{I.out}Выбыл</button>
               </div>
             )) : <div className="lc-empty">Никого не осталось в игре</div>}
@@ -1166,7 +1201,8 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
                   </div>
                 </div>
                 <div className="sp"></div>
-                <button className="btn ghost sm" onClick={()=>revive(r.pid)}>Вернуть</button>
+                <button className="btn ghost sm" onClick={()=>revive(r.pid)}>Вернуть без ребая</button>
+                <button className="btn gold sm" onClick={()=>setRebuyFor(r.pid)}>Ребай и вернуть</button>
               </div>
             )) : <div className="lc-empty">Пока никто не выбыл</div>}
           </div>
@@ -1177,7 +1213,7 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
         <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
           <h3>Кто выбил игрока?</h3>
           <div className="msub">Выбыл: {nm({pid:koFor})} · {t.type}
-            {ko==="mystery" ? " · тянем конверт" : ko==="bounty" ? " · +2 очка выбившему" : " · очки за нокаут не начисляются"}
+            {ko==="mystery" ? " · тянем конверт" : ko==="bounty" ? " · +20 очков выбившему" : " · очки за нокаут не начисляются"}
           </div>
           {inPlay.length>6 && <input className="inp" placeholder="Поиск по нику…" autoFocus
             value={koQuery} onChange={e=>setKoQuery(e.target.value)}
@@ -1200,12 +1236,14 @@ function LiveControl({tours,players,saveTour,savePlayer,toast}){
 
       {rebuyFor && <div className="ov" onClick={()=>setRebuyFor(null)}>
         <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
-          <h3>Докупка</h3>
+          <h3>{rebuyRec.out?"Ребай и возврат":"Стек и докупки"}</h3>
           <div className="msub">{nm({pid:rebuyFor})} · {t.name}</div>
           <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
+            {!rebuyRec.out && (Number.isFinite(+rebuyRec.stack)?+rebuyRec.stack:0)===0 && <button className="btn gold" style={{justifyContent:"space-between"}} onClick={()=>grantStart(rebuyFor)}><span>Выдать стартовый стек</span><span>+{(parseInt(String(t.stack||"").replace(/\D/g,""))||0).toLocaleString("ru")}</span></button>}
             <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"small")}><span>Малый ребай · 1000 ₽</span><span className="gold-t">+30 000</span></button>
             <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"big")}><span>Большой ребай · 1500 ₽</span><span className="gold-t">+50 000</span></button>
             <button className="btn ghost" style={{justifyContent:"space-between"}} onClick={()=>rebuy(rebuyFor,"addon")}><span>Аддон · 1000 ₽</span><span className="gold-t">×2 старта</span></button>
+            {!rebuyRec.out && <button className="btn danger" onClick={()=>resetStack(rebuyFor)}>Сбросить стек в 0</button>}
           </div>
           <div className="mfoot"><button className="btn ghost" onClick={()=>setRebuyFor(null)}>Закрыть</button></div>
         </div>

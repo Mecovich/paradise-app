@@ -160,6 +160,41 @@ body{
 .cta.reg{background:linear-gradient(180deg,#41dda7,#20b888);color:#04211a;box-shadow:0 8px 20px -8px rgba(52,210,155,.6);}
 .cta.reg:active{filter:brightness(.97);}
 
+/* full tournament view */
+.tour-detail{position:fixed;inset:0;z-index:50;width:100%;max-width:440px;margin:0 auto;background:linear-gradient(180deg,#0a1c14 0%,#08150f 45%,#06110c 100%);overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(104px + env(safe-area-inset-bottom));animation:tdin .24s cubic-bezier(.2,.75,.2,1);}
+@keyframes tdin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.td-head{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:rgba(8,21,15,.88);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);}
+.td-back{width:38px;height:38px;border:1px solid var(--line2);border-radius:14px;background:var(--surface2);color:var(--txt);font-size:27px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.td-head .name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.td-status{margin-left:auto;font-size:11px;font-weight:700;color:var(--gold);}
+.td-hero{height:250px;position:relative;overflow:hidden;background:linear-gradient(155deg,#0f5a42,#062018);}
+.td-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.td-hero .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,12,9,.08),rgba(4,12,9,.88));}
+.td-hero .copy{position:absolute;left:20px;right:20px;bottom:20px;}
+.td-hero .type{font-size:11px;font-weight:700;color:#9be9cd;margin-bottom:8px;}
+.td-hero .title{font-size:30px;line-height:1.02;font-weight:800;letter-spacing:-.7px;}
+.td-body{padding:18px 20px 0;}
+.td-facts{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.td-fact{padding:13px 14px;border-radius:15px;background:var(--surface2);border:1px solid var(--line);}
+.td-fact .k{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;}
+.td-fact .v{font-size:14px;font-weight:700;margin-top:5px;}
+.td-fact .v.g{color:var(--gold);}
+.td-section{margin-top:24px;}
+.td-section h3{font-size:17px;font-weight:700;margin-bottom:10px;}
+.td-description{font-size:14px;line-height:1.55;color:var(--muted);white-space:pre-wrap;}
+.td-person{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line);}
+.td-person .photo{width:36px;height:36px;border-radius:50%;overflow:hidden;background:#efe6e6;flex-shrink:0;}
+.td-person .who{font-size:14px;font-weight:600;}
+.td-person .seat{font-size:11px;color:var(--muted2);margin-top:2px;}
+.td-person .tag{margin-left:auto;font-size:11px;color:var(--muted2);}
+.td-person .tag.me{color:var(--crimson);font-weight:700;}
+.td-empty{padding:18px 0;color:var(--muted2);font-size:13px;}
+.td-actionbar{position:fixed;z-index:52;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:440px;padding:12px 20px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(6,17,12,0),#06110c 28%);}
+.td-action{width:100%;min-height:52px;border:1px solid rgba(52,210,155,.35);border-radius:15px;background:linear-gradient(180deg,#41dda7,#20b888);color:#04211a;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;}
+.td-action.secondary{background:rgba(52,210,155,.08);color:#83f0c6;}
+.td-action:active,.td-back:active{transform:scale(.98);}
+@media (prefers-reduced-motion:reduce){.tour-detail{animation:none}}
+
 /* tabs */
 .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px;margin:6px 0 22px;}
 .tab{flex:1;text-align:center;padding:11px 6px;border-radius:12px;font-weight:600;font-size:13px;color:var(--muted);cursor:pointer;transition:.18s;letter-spacing:.2px;}
@@ -704,7 +739,7 @@ function toCard(t,i,pid){
   const waiting=PClub.waitingList(arr).length;
   const mine=pid?arr.filter(r=>r.pid===pid)[0]:null;
   return {id:t.id,name:t.name,sub:t.type||"Tourney",cls:["hh","free","cls"][i%3],date:dateStr,time:t.time,
-    players:`${seated} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status,banner:t.banner||"",
+    players:`${seated} / ${t.max}`,buyin:t.buyin,stack:t.stack,reg:t.reg||("до "+t.time),status:t.status,banner:t.banner||"",description:t.description||"",
     seated, max:+t.max||0, waiting, full:seated>=(+t.max||0),
     myStatus:mine?mine.status:null, myTable:mine?(mine.table||null):null, mySeat:mine?(mine.seat||null):null,
     myPlace:mine&&mine.status==="wait"?PClub.myWaitPlace(t,pid):null};
@@ -766,7 +801,7 @@ const IDENTITY = {
             : (DEMO_MODE ? "@"+(_q.get("u")||"ceoblaze") : ""),
   photo: TGU && TGU.photo_url ? TGU.photo_url : null
 };
-const GOLD_AT=1500; // порог уровня Gold
+const GOLD_AT=15000; // порог уровня Gold после масштабирования рейтинга ×10
 /* живой профиль игрока: id/ник/фото фиксированы, статы приходят из store (обновляются в App) */
 const ME = { id:MY_ID, name:IDENTITY.name, photo:IDENTITY.photo, handle:"", tier:"SILVER", pts:0, toGold:GOLD_AT, games:0, wins:0, rank:1, bonus:0 };
 /* аватар текущего игрока: фото из Telegram, иначе плейсхолдер */
@@ -821,9 +856,11 @@ function Meta({t}){
     </div>
   );
 }
-function TCard({t, live, done, onReg, onWatch, onResults}){
+function TCard({t, live, done, onReg, onWatch, onResults, onOpen}){
   return (
-    <div className="tcard">
+    <div className="tcard" role="button" tabIndex="0" style={{cursor:"pointer"}}
+      onClick={()=>{haptic();onOpen&&onOpen(t);}}
+      onKeyDown={e=>{if((e.key==="Enter"||e.key===" ")&&onOpen){e.preventDefault();onOpen(t);}}}>
       <div className={"banner "+t.cls} style={done?{filter:"saturate(.7) brightness(.85)"}:null}>
         {t.banner ? <img className="bimg" src={t.banner} alt=""/> : <><div className="glow"></div><div className="suits"><b className="a">♠</b></div></>}
         <div className="scrim"></div>
@@ -841,25 +878,75 @@ function TCard({t, live, done, onReg, onWatch, onResults}){
       </div>
       <Meta t={t}/>
       {live
-        ? <div className="cta watch" onClick={()=>{haptic();onWatch&&onWatch(t);}}><span className="lv"></span>Турнир идёт — смотреть</div>
+        ? <div className="cta watch" onClick={e=>{e.stopPropagation();haptic();onWatch&&onWatch(t);}}><span className="lv"></span>Турнир идёт — смотреть</div>
         : done
-        ? <div className="cta watch" onClick={()=>{haptic();onResults&&onResults(t);}}>Смотреть результаты →</div>
+        ? <div className="cta watch" onClick={e=>{e.stopPropagation();haptic();onResults&&onResults(t);}}>Смотреть результаты →</div>
         : t.myStatus==="reg"
-        ? <div className="cta watch" onClick={()=>{haptic();onReg(t);}}>
+        ? <div className="cta watch" onClick={e=>{e.stopPropagation();haptic();onReg(t);}}>
             ✓ Вы записаны{t.myTable?` · стол ${t.myTable}, место ${t.mySeat}`:""}
           </div>
         : t.myStatus==="wait"
-        ? <div className="cta watch" onClick={()=>{haptic();onReg(t);}}>
+        ? <div className="cta watch" onClick={e=>{e.stopPropagation();haptic();onReg(t);}}>
             ⏳ В очереди{t.myPlace?` · ${t.myPlace}-й`:""}
           </div>
-        : <div className="cta reg" onClick={()=>{haptic("medium");onReg(t);}}>
+        : <div className="cta reg" onClick={e=>{e.stopPropagation();haptic("medium");onReg(t);}}>
             {t.full ? `В лист ожидания${t.waiting?` · ${t.waiting} в очереди`:""}` : "Записаться"}
           </div>}
     </div>
   );
 }
 
-function Home({live, open, onReg, onWatch, go}){
+function TournamentDetails({tour,card,players,onClose,onReg,onWatch,onResults}){
+  if(!tour||!card) return null;
+  const regs=PClub.regsToArray(tour.regs);
+  const pById=id=>players.find(p=>p.id===id);
+  const status=tour.status==="live"?"ИДЁТ СЕЙЧАС":tour.status==="done"?"ЗАВЕРШЁН":"ЗАПИСЬ ОТКРЫТА";
+  const action=()=>{
+    if(tour.status==="live") onWatch(card);
+    else if(tour.status==="done") onResults(card);
+    else onReg(card);
+  };
+  const actionText=tour.status==="live"?"Смотреть турнир":tour.status==="done"?"Смотреть результаты":card.myStatus==="reg"?"Вы записаны. Открыть запись":card.myStatus==="wait"?`Вы в очереди${card.myPlace?` (${card.myPlace})`:""}`:card.full?"В лист ожидания":"Записаться";
+  return (
+    <div className="tour-detail">
+      <div className="td-head">
+        <button className="td-back" onClick={onClose} aria-label="Назад">‹</button>
+        <div className="name">{tour.name}</div>
+        <div className="td-status">{status}</div>
+      </div>
+      <div className="td-hero">
+        {tour.banner&&<img src={tour.banner} alt=""/>}
+        <div className="shade"></div>
+        <div className="copy"><div className="type">{tour.type||"Турнир Paradise"}</div><div className="title">{tour.name}</div></div>
+      </div>
+      <div className="td-body">
+        <div className="td-facts">
+          <div className="td-fact"><div className="k">Дата и время</div><div className="v">{card.date}, {tour.time}</div></div>
+          <div className="td-fact"><div className="k">Бай-ин</div><div className="v g">{tour.buyin}</div></div>
+          <div className="td-fact"><div className="k">Стартовый стек</div><div className="v">{tour.stack}</div></div>
+          <div className="td-fact"><div className="k">Участники</div><div className="v">{PClub.seatedCount(regs)} / {tour.max}</div></div>
+        </div>
+        <div className="td-section">
+          <h3>О турнире</h3>
+          <div className="td-description">{tour.description||"Подробности турнира уточняйте у организатора клуба."}</div>
+        </div>
+        <div className="td-section">
+          <h3>Список игроков</h3>
+          {regs.length?regs.map(r=>{const p=pById(r.pid);const mine=r.pid===MY_ID;return(
+            <div className="td-person" key={r.pid}>
+              <div className="photo"><Ava p={p||{}}/></div>
+              <div><div className="who">{p?p.username:"@username"}</div><div className="seat">{r.status==="wait"?`В листе ожидания, место ${PClub.myWaitPlace(tour,r.pid)}`:r.table?`Стол ${r.table}, место ${r.seat}`:tour.status==="live"?`Стек ${(Number.isFinite(+r.stack)?+r.stack:0).toLocaleString("ru")}`:"Участник"}</div></div>
+              <div className={"tag"+(mine?" me":"")}>{mine?"Вы":r.out?"Выбыл":""}</div>
+            </div>
+          );}):<div className="td-empty">Пока никто не записался. Вы можете стать первым.</div>}
+        </div>
+      </div>
+      <div className="td-actionbar"><button className={"td-action"+(tour.status!=="reg"||card.myStatus?" secondary":"")} onClick={action}>{actionText}</button></div>
+    </div>
+  );
+}
+
+function Home({live, open, onReg, onWatch, onOpen, go}){
   const homePts=useCountUp(ME.pts,1100);
   return (
     <div className="screen">
@@ -881,12 +968,12 @@ function Home({live, open, onReg, onWatch, go}){
 
       {live && <>
         <div className="eyebrow"><span className="dot"></span>Идёт сейчас<span className="all" onClick={()=>go("tour")}>Все →</span></div>
-        <TCard t={live} live onReg={onReg} onWatch={onWatch}/>
+        <TCard t={live} live onReg={onReg} onWatch={onWatch} onOpen={onOpen}/>
       </>}
 
       {open[0] && <>
         <div className="eyebrow"><span className="dot g"></span>Открыта запись<span className="all" onClick={()=>go("tour")}>Все →</span></div>
-        <TCard t={open[0]} onReg={onReg}/>
+        <TCard t={open[0]} onReg={onReg} onOpen={onOpen}/>
       </>}
 
       {!live && !open.length && <div className="hempty" style={{marginTop:20}}><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Турниров пока нет</div></div>}
@@ -894,7 +981,7 @@ function Home({live, open, onReg, onWatch, go}){
   );
 }
 
-function Tournaments({live, open, past, onReg, onWatch, onResults}){
+function Tournaments({live, open, past, onReg, onWatch, onResults, onOpen}){
   const [tab,setTab]=useState("act");
   return (
     <div className="screen">
@@ -905,12 +992,12 @@ function Tournaments({live, open, past, onReg, onWatch, onResults}){
       </div>
       {tab==="act" ? <>
         {live.length>0 && <div className="eyebrow" style={{marginTop:6}}><span className="dot"></span>Идут сейчас</div>}
-        {live.map((t,i)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} live onReg={onReg} onWatch={onWatch}/></div>)}
+        {live.map((t,i)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} live onReg={onReg} onWatch={onWatch} onOpen={onOpen}/></div>)}
         {open.length>0 && <div className="eyebrow"><span className="dot g"></span>Открыта запись</div>}
-        {open.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} onReg={onReg}/></div>)}
+        {open.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} onReg={onReg} onOpen={onOpen}/></div>)}
         {!live.length && !open.length && <div className="hempty" style={{marginTop:30}}><div className="s">♠</div><div style={{marginTop:12,fontSize:14}}>Актуальных турниров нет</div></div>}
       </> : (
-        past.length ? past.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} done onReg={onReg} onResults={onResults}/></div>) :
+        past.length ? past.map((t)=><div key={t.id} style={{marginBottom:16}}><TCard t={t} done onReg={onReg} onResults={onResults} onOpen={onOpen}/></div>) :
         <div style={{textAlign:"center",color:"var(--muted2)",padding:"80px 0"}}>
           <div style={{fontSize:36,opacity:.5,color:"var(--crimson)"}}>♠</div>
           <div style={{marginTop:14,fontSize:14}}>Здесь появятся сыгранные турниры</div>
@@ -1541,6 +1628,7 @@ function App(){
   const [reg,setReg]=useState(null);
   const [watch,setWatch]=useState(null);
   const [standings,setStandings]=useState(null);
+  const [details,setDetails]=useState(null);
   const [tours,setTours]=useState([]);
   const [players,setPlayers]=useState([]);
   React.useEffect(()=>{
@@ -1604,6 +1692,7 @@ function App(){
   const live=tours.filter(t=>t.status==="live").map((t,i)=>toCard(t,i,MY_ID));
   const open=tours.filter(t=>t.status==="reg").sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map((t,i)=>toCard(t,i,MY_ID));
   const past=tours.filter(t=>t.status==="done").sort(byDate).map((t,i)=>toCard(t,i,MY_ID));
+  const allCards=open.concat(live,past);
   // моя история и активные записи из турниров
   const myHistory=tours.filter(t=>t.status==="done").map(t=>{
     const r=(t.results||[]).find(x=>x.pid===MY_ID);
@@ -1642,11 +1731,10 @@ function App(){
   };
   const showWatch=(card)=>{
     const tt=tours.find(x=>x.id===card.id); if(!tt) return;
-    const base=parseInt(String(tt.stack||"").replace(/\D/g,""))||0;
     const regs=tt.regs||[]; const pById=id=>players.find(x=>x.id===id);
     /* pts берём из карточки игрока — это его настоящий рейтинг клуба */
     const inPlay=regs.filter(r=>!r.out).map(r=>{const p=pById(r.pid);
-      return {name:p?p.username:"@username",photo:p?p.photo:null,stack:r.stack||base,pts:p?(p.pts||0):0,me:r.pid===MY_ID};})
+      return {name:p?p.username:"@username",photo:p?p.photo:null,stack:Number.isFinite(+r.stack)?+r.stack:0,pts:p?(p.pts||0):0,me:r.pid===MY_ID};})
       .sort((a,b)=>b.stack-a.stack);
     const out=regs.filter(r=>r.out).sort((a,b)=>(a.place||0)-(b.place||0)).map(r=>{const p=pById(r.pid);
       return {name:p?p.username:"@username",photo:p?p.photo:null,pts:p?(p.pts||0):0,place:r.place};});
@@ -1672,15 +1760,15 @@ function App(){
         <span className="pill"><span className="suit"><Logo size={12} color="#34d29b"/></span> Paradise · Покерный к...</span>
         <span className="dots">•••</span>
       </div>}
-      {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={showWatch} go={setTab}/>}
-      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={showWatch} onResults={showResults}/>}
+      {tab==="home" && <Home live={live[0]||null} open={open} onReg={setReg} onWatch={showWatch} onOpen={c=>setDetails(c.id)} go={setTab}/>}
+      {tab==="tour" && <Tournaments live={live} open={open} past={past} onReg={setReg} onWatch={showWatch} onResults={showResults} onOpen={c=>setDetails(c.id)}/>}
       {tab==="rate" && <Rating players={players}/>}
       {tab==="prof" && <Profile history={myHistory} active={myActive} onSettings={setSettings}/>}
       <div className="navwrap">
         <div className="nav">
           <div className="nav-ind" style={{transform:`translateX(${nav.findIndex(n=>n.k===tab)*100}%)`}}></div>
           {nav.map(n=>(
-            <div key={n.k} className={"it "+(tab===n.k?"on":"")} onClick={()=>{haptic();setTab(n.k);}}>
+            <div key={n.k} className={"it "+(tab===n.k?"on":"")} onClick={()=>{haptic();setDetails(null);setTab(n.k);}}>
               <div className="ico">{n.i}</div>{n.l}
             </div>
           ))}
@@ -1691,6 +1779,8 @@ function App(){
       {settings && <ProfileSettings onClose={()=>setSettings(false)} onSaved={()=>setTick(t=>t+1)}/>}
       {watch && <LiveSheet data={watch} onClose={()=>setWatch(null)}/>}
       {standings && <ResultsSheet data={standings} onClose={()=>setStandings(null)}/>}
+      {details && <TournamentDetails tour={tours.find(t=>t.id===details)} card={allCards.find(c=>c.id===details)} players={players}
+        onClose={()=>setDetails(null)} onReg={setReg} onWatch={showWatch} onResults={showResults}/>}
     </div>
   );
 }
